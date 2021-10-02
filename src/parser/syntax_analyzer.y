@@ -31,24 +31,108 @@ syntax_tree_node *node(const char *node_name, int children_num, ...);
 /* TODO: Complete this definition.
    Hint: See pass_node(), node(), and syntax_tree.h.
          Use forward declaring. */
-%union {}
+%union {
+    struct _syntax_tree_node *node;     // syntax_tree_node * 会报错
+
+}
 
 /* TODO: Your tokens here. */
+
+%token <node> INT FLOAT VOID
+%token <node> IF ELSE WHILE RETURN
+%token <node> ID
+%token <node> FLOATPOINT INTEGER
+%token <node> ADD SUBTRACT MULTIPLY DIVIDE
+%token <node> LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE
+%token <node> GREATEREQUAL GREATER LESS LESSEQUAL EQUAL UNEQUAL
+%token <node> ASSIGN SEMICOLON COMMA
 %token <node> ERROR
-%token <node> ADD
-%type <node> program
+
+
+%type <node> program declaration_list declaration var_declaration type_specifier
+%type <node> fun_declaration params param_list param compound_stmt
+%type <node> local_declarations statement_list statement expression_stmt selection_stmt
+%type <node> iteration_stmt return_stmt expression var simple_expression
+%type <node> relop additive_expression addop term mulop
+%type <node> factor integer float call args
+%type <node> arg_list
+
 
 %start program
+
 
 %%
 /* TODO: Your rules here. */
 
-/* Example:
-program: declaration-list {$$ = node( "program", 1, $1); gt->root = $$;}
-       ;
-*/
+// 1
+program : declaration_list {$$ = node("program", 1, $1); gt->root = $$;};
 
-program : ;
+declaration_list : declaration_list declaration | declaration;
+
+declaration : var_declaration | fun_declaration;
+
+var_declaration : type_specifier ID SEMICOLON | type_specifier ID LBRACKET SEMICOLON RBRACKET;
+
+type_specifier : INT | FLOAT | VOID;
+
+// 6
+fun_declaration : type_specifier ID LPAREN params RPAREN compound_stmt;
+
+params : param_list | VOID;
+
+param_list : param_list COMMA param | param;
+
+param : type_specifier ID | type_specifier ID LBRACKET RBRACKET;
+
+compound_stmt : LBRACE local_declarations statement_list RBRACE;
+
+// 11
+local_declarations : local_declarations var_declaration | {};
+
+statement_list : statement_list statement | {};
+
+statement : expression_stmt | compound_stmt | selection_stmt | iteration_stmt | return_stmt;
+
+expression_stmt : expression SEMICOLON | SEMICOLON;
+
+selection_stmt : IF LPAREN expression RPAREN statement | IF LPAREN expression RPAREN statement ELSE statement;
+
+// 16
+iteration_stmt : WHILE LPAREN expression RPAREN statement;
+
+return_stmt : RETURN SEMICOLON | RETURN expression SEMICOLON;
+
+expression : var ASSIGN expression | simple_expression;
+
+var : ID | ID LBRACKET expression RBRACKET;
+
+simple_expression : additive_expression relop additive_expression | additive_expression;
+
+// 21
+relop : GREATEREQUAL | GREATER | LESS | LESSEQUAL | EQUAL | UNEQUAL;
+
+additive_expression : additive_expression addop term | term;
+
+addop : ADD | SUBTRACT;
+
+term : term mulop factor | factor;
+
+mulop : MULTIPLY | DIVIDE;
+
+// 26
+
+factor : LPAREN expression RPAREN | var | call | integer | float;
+
+integer : INTEGER;
+
+float : FLOATPOINT;
+
+call : ID LPAREN args RPAREN;
+
+args : arg_list | {};
+
+// 31
+arg_list : arg_list COMMA expression | expression;
 
 %%
 
