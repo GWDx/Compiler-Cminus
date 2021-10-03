@@ -87,9 +87,9 @@ param : type_specifier ID | type_specifier ID LBRACKET RBRACKET;
 compound_stmt : LBRACE local_declarations statement_list RBRACE;
 
 // 11
-local_declarations : local_declarations var_declaration | {};
+local_declarations : local_declarations var_declaration | ;
 
-statement_list : statement_list statement | {};
+statement_list : statement_list statement | ;
 
 statement : expression_stmt | compound_stmt | selection_stmt | iteration_stmt | return_stmt;
 
@@ -129,7 +129,7 @@ float : FLOATPOINT;
 
 call : ID LPAREN args RPAREN;
 
-args : arg_list | {};
+args : arg_list | ;
 
 // 31
 arg_list : arg_list COMMA expression | expression;

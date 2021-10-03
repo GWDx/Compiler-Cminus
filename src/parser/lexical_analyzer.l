@@ -30,7 +30,7 @@ void pass_node(char *text){
  /* two cases for you, pass_node will send flex's token to bison */
 
  // 注释
-\/\*([^\*]|\*[^\/])*\*+\/   {/*pos_end=strlen(strrchr(yytext, '\n'));*/ DealPos;}
+\/\*([^\*]|\*[^\/])*\*+\/   {/*print; pos_end=strlen(strrchr(yytext, '\n'));*/ DealPos;}
 
 [a-zA-Z]+ {
     DealPos;
@@ -81,7 +81,7 @@ void pass_node(char *text){
 " "|\t {DealPos;}
 \n|\r {pos_end=1; lines++;}
 
-.   {print; DealPos; return ERROR;}
+.   {/*print;*/ DealPos; return ERROR;}
 
  /****请在此补全所有flex的模式与动作  end******/
 %%
