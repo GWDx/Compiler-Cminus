@@ -8,13 +8,15 @@
 #include "syntax_tree.h"
 #include "syntax_analyzer.h"
 
-int lines;
+int lines=1;
 int pos_start;
-int pos_end;
+int pos_end=1;
 
 void pass_node(char *text){
     yylval.node = new_syntax_tree_node(text);
 }
+
+#define print printf(">> %s\n", yytext);
 
 #define DealPos pos_start = pos_end; pos_end += strlen(yytext); pass_node(yytext);
 
@@ -27,7 +29,10 @@ void pass_node(char *text){
  /* to do for students */
  /* two cases for you, pass_node will send flex's token to bison */
 
-[a-zA-z_][a-zA-Z0-9]* {
+ // 注释
+\/\*([^\*]|\*[^\/])*\*+\/   {/*pos_end=strlen(strrchr(yytext, '\n'));*/ DealPos;}
+
+[a-zA-Z]+ {
     DealPos;
     if(strcmp(yytext, "int")==0) return INT;
     if(strcmp(yytext, "float")==0) return FLOAT;
@@ -40,7 +45,7 @@ void pass_node(char *text){
     return ID;
 }
 
-[0-9]+\.|[0-9]*.[0-9]+  {
+[0-9]+\.|[0-9]*\.[0-9]+  {
     DealPos;
     return FLOATPOINT;
 }
@@ -66,16 +71,17 @@ void pass_node(char *text){
 ">"  {DealPos; return GREATER;}
 "<"  {DealPos; return LESS;}
 "<=" {DealPos; return LESSEQUAL;}
-"==" {DealPos; return ASSIGN;}
+"==" {DealPos; return EQUAL;}
 "!=" {DealPos; return UNEQUAL;}
 
 "=" {DealPos; return ASSIGN;}
 ";" {DealPos; return SEMICOLON;}
 "," {DealPos; return COMMA;}
 
-" "|\t|\n|\r {DealPos;}
+" "|\t {DealPos;}
+\n|\r {pos_end=1; lines++;}
 
-.   {DealPos; return ERROR;}
+.   {print; DealPos; return ERROR;}
 
  /****请在此补全所有flex的模式与动作  end******/
 %%

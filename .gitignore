@@ -1,6 +1,6 @@
 build
 .vscode
 .directory
+src/parser/test
 src/parser/learn
 src/parser/run.sh
-src/parser/test

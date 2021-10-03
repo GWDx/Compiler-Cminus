@@ -71,7 +71,7 @@ declaration_list : declaration_list declaration | declaration;
 
 declaration : var_declaration | fun_declaration;
 
-var_declaration : type_specifier ID SEMICOLON | type_specifier ID LBRACKET SEMICOLON RBRACKET;
+var_declaration : type_specifier ID SEMICOLON | type_specifier ID LBRACKET INTEGER RBRACKET SEMICOLON;
 
 type_specifier : INT | FLOAT | VOID;
 
