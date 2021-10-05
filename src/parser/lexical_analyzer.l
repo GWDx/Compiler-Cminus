@@ -8,9 +8,9 @@
 #include "syntax_tree.h"
 #include "syntax_analyzer.h"
 
-int lines=1;
+int lines;
 int pos_start;
-int pos_end=1;
+int pos_end;
 
 void pass_node(char *text){
     yylval.node = new_syntax_tree_node(text);
@@ -18,7 +18,7 @@ void pass_node(char *text){
 
 #define print printf(">> %s\n", yytext);
 
-#define DealPos pos_start = pos_end; pos_end += strlen(yytext); pass_node(yytext);
+#define DealPosPass pos_start = pos_end; pos_end += strlen(yytext); pass_node(yytext);
 
 /*****************声明和选项设置  end*****************/
 
@@ -30,10 +30,15 @@ void pass_node(char *text){
  /* two cases for you, pass_node will send flex's token to bison */
 
  // 注释
-\/\*([^\*]|\*[^\/])*\*+\/   {/*print; pos_end=strlen(strrchr(yytext, '\n'));*/ DealPos;}
+\/\*([^\*]|\*[^\/])*\*+\/   {
+    for(int i=0;yytext[i];i++){
+        if(yytext[i]=='\n' || yytext[i]=='\r'){pos_end=0; lines++;}
+        else pos_end++;
+    }
+}
 
 [a-zA-Z]+ {
-    DealPos;
+    DealPosPass;
     if(strcmp(yytext, "int")==0) return INT;
     if(strcmp(yytext, "float")==0) return FLOAT;
     if(strcmp(yytext, "void")==0) return VOID;
@@ -46,42 +51,42 @@ void pass_node(char *text){
 }
 
 [0-9]+\.|[0-9]*\.[0-9]+  {
-    DealPos;
+    DealPosPass;
     return FLOATPOINT;
 }
 
 [0-9]+  {
-    DealPos;
+    DealPosPass;
     return INTEGER;
 }
 
-"+" {DealPos; return ADD;}
-"-" {DealPos; return SUBTRACT;}
-"*" {DealPos; return MULTIPLY;}
-"/" {DealPos; return DIVIDE;}
+"+" {DealPosPass; return ADD;}
+"-" {DealPosPass; return SUBTRACT;}
+"*" {DealPosPass; return MULTIPLY;}
+"/" {DealPosPass; return DIVIDE;}
 
-"(" {DealPos; return LPAREN;}
-")" {DealPos; return RPAREN;}
-"[" {DealPos; return LBRACKET;}
-"]" {DealPos; return RBRACKET;}
-"{" {DealPos; return LBRACE;}
-"}" {DealPos; return RBRACE;}
+"(" {DealPosPass; return LPAREN;}
+")" {DealPosPass; return RPAREN;}
+"[" {DealPosPass; return LBRACKET;}
+"]" {DealPosPass; return RBRACKET;}
+"{" {DealPosPass; return LBRACE;}
+"}" {DealPosPass; return RBRACE;}
 
-">=" {DealPos; return GREATEREQUAL;}
-">"  {DealPos; return GREATER;}
-"<"  {DealPos; return LESS;}
-"<=" {DealPos; return LESSEQUAL;}
-"==" {DealPos; return EQUAL;}
-"!=" {DealPos; return UNEQUAL;}
+">=" {DealPosPass; return GREATEREQUAL;}
+"<=" {DealPosPass; return LESSEQUAL;}
+">"  {DealPosPass; return GREATER;}
+"<"  {DealPosPass; return LESS;}
+"==" {DealPosPass; return EQUAL;}
+"!=" {DealPosPass; return UNEQUAL;}
 
-"=" {DealPos; return ASSIGN;}
-";" {DealPos; return SEMICOLON;}
-"," {DealPos; return COMMA;}
+"=" {DealPosPass; return ASSIGN;}
+";" {DealPosPass; return SEMICOLON;}
+"," {DealPosPass; return COMMA;}
 
-" "|\t {DealPos;}
-\n|\r {pos_end=1; lines++;}
+" "|\t {pos_end++;}
+\n|\r {pos_end=0; lines++;}
 
-.   {/*print;*/ DealPos; return ERROR;}
+.   {/*print;*/ DealPosPass; return ERROR;}
 
  /****请在此补全所有flex的模式与动作  end******/
 %%

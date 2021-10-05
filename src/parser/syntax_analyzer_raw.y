@@ -33,7 +33,6 @@ syntax_tree_node *node(const char *node_name, int children_num, ...);
          Use forward declaring. */
 %union {
     struct _syntax_tree_node *node;     // syntax_tree_node * 会报错
-
 }
 
 /* TODO: Your tokens here. */
