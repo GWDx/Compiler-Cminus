@@ -1,7 +1,12 @@
-tests
 build
 .vscode
 .directory
+
 src/parser/test
 src/parser/learn
 src/parser/run.sh
+
+tests/parser
+tests/2-ir-gen-warmup/learn
+tests/2-ir-gen-warmup/ta_gcd
+tests/2-ir-gen-warmup/c_cases
