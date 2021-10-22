@@ -7,16 +7,17 @@
 
 #include <iostream>
 
-#define DEBUG_OUTPUT std::cerr << __LINE__ << std::endl;  // 输出行号的简单示例
+#define DEBUG_OUTPUT std::clog << __LINE__ << std::endl;  // 输出行号的简单示例
 
 #define CONST_INT(num) ConstantInt::get(num, module)
-#define CONST_FP(num) ConstantFP::get(num, module)  // 得到常数值的表示,方便后面多次用到
+#define CONST_FP(num) ConstantFP::get(num, module)
 
 int main() {
-    auto module = new Module("Cminus code");  // module name是什么无关紧要
+    auto module = new Module("Cminus code");
     auto builder = new IRBuilder(nullptr, module);
     Type* Int32Type = Type::get_int32_type(module);
 
+    // callee 函数
     std::vector<Type*> Ints(1, Int32Type);
     auto calleeFunctionType = FunctionType::get(Int32Type, Ints);
     auto calleeFunction = Function::create(calleeFunctionType, "callee", module);
@@ -33,7 +34,7 @@ int main() {
     auto multiplied = builder->create_imul(CONST_INT(2), aLoad);
     builder->create_ret(multiplied);
 
-    // main
+    // main 函数
     auto mainFunction = Function::create(FunctionType::get(Int32Type, {}), "main", module);
     basicBlock = BasicBlock::create(module, "entry", mainFunction);
     builder->set_insert_point(basicBlock);

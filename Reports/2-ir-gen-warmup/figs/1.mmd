@@ -1,0 +1,32 @@
+flowchart TB
+    i1 --- e1 --- t1 --- t2 --- t3 --- n1
+    t2 --- e2 --- e3 --- e4 --- t4 --- n2
+    e3 --- t5 --- n3
+    e2 --- t6 --- n4
+    t1 --- t7 --- n5
+
+    style i1 fill:#dff;
+    i1(Input)
+
+    classDef Expression fill:#fbf;
+    class e1,e2,e3,e4 Expression
+    e1(Expression 1)
+    e2(Expression 2<br>OP_MINUS)
+    e3(Expression 3<br>OP_PLUS)
+    e4(Expression 4)
+
+    t1(Term 1<br>OP_DIV)
+    t2(Term 2<br>OP_MUL)
+    t3(Term 3)
+    t4(Term 4)
+    t5(Term 5)
+    t6(Term 6)
+    t7(Term 7)
+
+    classDef Num fill:#ffb;
+    class n1,n2,n3,n4,n5 Num
+    n1(Num 1<br>val: 4)
+    n2(Num 2<br>val: 8)
+    n3(Num 3<br>val: 4)
+    n4(Num 4<br>val: 1)
+    n5(Num 5<br>val: 2)

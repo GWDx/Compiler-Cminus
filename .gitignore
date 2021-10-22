@@ -10,5 +10,5 @@ tests/parser
 tests/2-ir-gen-warmup/learn
 tests/2-ir-gen-warmup/ta_gcd
 tests/2-ir-gen-warmup/c_cases
+tests/2-ir-gen-warmup/calculator
 tests/2-ir-gen-warmup/*.sh
-tests/2-ir-gen-warmup/stu_cpp/*.h
