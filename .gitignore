@@ -5,6 +5,8 @@ build
 src/parser/test
 src/parser/learn
 src/parser/run.sh
+src/cminusfc/test
+src/cminusfc/run.sh
 
 tests/parser
 tests/2-ir-gen-warmup/learn
