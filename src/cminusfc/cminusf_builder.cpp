@@ -59,7 +59,10 @@ void CminusfBuilder::visit(ASTCompoundStmt& node) {
         i->accept(*this);
 }
 
-void CminusfBuilder::visit(ASTExpressionStmt& node) {}
+void CminusfBuilder::visit(ASTExpressionStmt& node) {
+    if (node.expression != nullptr)
+        node.expression->accept(*this);
+}
 
 void CminusfBuilder::visit(ASTSelectionStmt& node) {}
 
@@ -93,4 +96,13 @@ void CminusfBuilder::visit(ASTTerm& node) {
         node.factor->accept(*this);
 }
 
-void CminusfBuilder::visit(ASTCall& node) {}
+void CminusfBuilder::visit(ASTCall& node) {
+    std::vector<Value*> values;
+    for (auto i : node.args) {
+        i->accept(*this);
+        values.push_back(value);
+    }
+
+    auto callFunction = CminusfBuilder::scope.find(node.id);
+    auto call = builder->create_call(callFunction, values);
+}
