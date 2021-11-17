@@ -7,6 +7,7 @@ src/parser/learn
 src/parser/run.sh
 src/cminusfc/test
 src/cminusfc/run.sh
+src/cminusfc/eval.sh
 
 tests/parser
 tests/2-ir-gen-warmup/learn
