@@ -16,3 +16,5 @@ tests/2-ir-gen-warmup/c_cases
 tests/2-ir-gen-warmup/calculator
 tests/2-ir-gen-warmup/*.sh
 tests/3-ir-gen/libcminus_io.a
+Current/run.sh
+Current/test
