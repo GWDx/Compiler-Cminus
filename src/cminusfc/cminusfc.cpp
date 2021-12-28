@@ -1,24 +1,26 @@
-#include "cminusf_builder.hpp"
-#include "PassManager.hpp"
-#include "LoopSearch.hpp"
-#include "Dominators.h"
-#include "Mem2Reg.hpp"
-#include "LoopSearch.hpp"
-#include "LoopInvHoist.hpp"
-#include "ActiveVars.hpp"
-#include "ConstPropagation.hpp"
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <memory>
+#include "ActiveVars.hpp"
+#include "CodeGenerate.hpp"
+#include "ConstPropagation.hpp"
+#include "Dominators.h"
+#include "LoopInvHoist.hpp"
+#include "LoopSearch.hpp"
+#include "Mem2Reg.hpp"
+#include "PassManager.hpp"
+#include "cminusf_builder.hpp"
 
 using namespace std::literals::string_literals;
 
 void print_help(std::string exe_name) {
-    std::cout << "Usage: " << exe_name <<
-        " [ -h | --help ] [ -o <target-file> ] [ -emit-llvm ] [-mem2reg] [-loop-search] [-loop-inv-hoist] [-const-propagation] [-active-vars] <input-file>" << std::endl;
+    std::cout << "Usage: " << exe_name
+              << " [ -h | --help ] [ -o <target-file> ] [ -emit-llvm ] [-mem2reg] [-loop-search] [-loop-inv-hoist] "
+                 "[-const-propagation] [-active-vars] [ -S ] <input-file>"
+              << std::endl;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     std::string target_path;
     std::string input_path;
 
@@ -28,8 +30,9 @@ int main(int argc, char **argv) {
     bool loop_inv_hoist = false;
     bool loop_search = false;
     bool emit = false;
+    bool codeGenerate = false;
 
-    for (int i = 1;i < argc;++i) {
+    for (int i = 1; i < argc; ++i) {
         if (argv[i] == "-h"s || argv[i] == "--help"s) {
             print_help(argv[0]);
             return 0;
@@ -53,6 +56,8 @@ int main(int argc, char **argv) {
             const_propagation = true;
         } else if (argv[i] == "-active-vars"s) {
             activevars = true;
+        } else if (argv[i] == "-S"s) {
+            codeGenerate = true;
         } else {
             if (input_path.empty()) {
                 input_path = argv[i];
@@ -95,35 +100,30 @@ int main(int argc, char **argv) {
     m->set_print_name();
     PassManager PM(m.get());
 
-    if( mem2reg )
-    {
+    if (mem2reg) {
         PM.add_pass<Mem2Reg>();
     }
-    if( loop_search )
-    {
+    if (loop_search) {
         PM.add_pass<LoopSearch>();
     }
-    if( const_propagation )
-    {
+    if (const_propagation) {
         PM.add_pass<ConstPropagation>(true);
     }
-    if( activevars )
-    {
+    if (activevars) {
         PM.add_pass<ActiveVars>();
     }
-    if( loop_inv_hoist )
-    {
+    if (loop_inv_hoist) {
         PM.add_pass<LoopInvHoist>(true);
     }
     PM.run();
-    
+
     auto IR = m->print();
 
     std::ofstream output_stream;
-    auto output_file = target_path+".ll";
+    auto output_file = target_path + ".ll";
     output_stream.open(output_file, std::ios::out);
     output_stream << "; ModuleID = 'cminus'\n";
-    output_stream << "source_filename = \""+ input_path +"\"\n\n";
+    output_stream << "source_filename = \"" + input_path + "\"\n\n";
     output_stream << IR;
     output_stream.close();
     if (!emit) {
@@ -131,9 +131,21 @@ int main(int argc, char **argv) {
         int re_code0 = std::system(command_string.c_str());
         command_string = "rm "s + target_path + ".ll";
         int re_code1 = std::system(command_string.c_str());
-        if(re_code0==0 && re_code1==0) return 0;
-        else return 1;
+        if (re_code0 == 0 && re_code1 == 0)
+            return 0;
+        else
+            return 1;
     }
+    if (codeGenerate) {
+        auto codeFile = target_path + ".s";
+        std::ofstream outputStream;
+        outputStream.open(codeFile, std::ios::out);
 
+        CodeGenerate codeGenerator(m.get());
+        auto ansCode = codeGenerator.generate();
+        outputStream << ansCode;
+
+        outputStream.close();
+    }
     return 0;
 }
