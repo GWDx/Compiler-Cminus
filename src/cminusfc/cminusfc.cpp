@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     bool loop_inv_hoist = false;
     bool loop_search = false;
     bool emit = false;
-    bool codeGenerate = false;
+    bool code_generate = false;
 
     for (int i = 1; i < argc; ++i) {
         if (argv[i] == "-h"s || argv[i] == "--help"s) {
@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
         } else if (argv[i] == "-active-vars"s) {
             activevars = true;
         } else if (argv[i] == "-S"s) {
-            codeGenerate = true;
+            code_generate = true;
         } else {
             if (input_path.empty()) {
                 input_path = argv[i];
@@ -119,6 +119,17 @@ int main(int argc, char** argv) {
 
     auto IR = m->print();
 
+    if (code_generate) {
+        CodeGenerate codeGenerator(m.get());
+        auto ansCode = codeGenerator.generate();
+
+        auto codeFile = target_path + ".s";
+        std::ofstream outputStream;
+        outputStream.open(codeFile, std::ios::out);
+        outputStream << ansCode;
+        outputStream.close();
+        return 0;
+    }
     std::ofstream output_stream;
     auto output_file = target_path + ".ll";
     output_stream.open(output_file, std::ios::out);
@@ -135,17 +146,6 @@ int main(int argc, char** argv) {
             return 0;
         else
             return 1;
-    }
-    if (codeGenerate) {
-        auto codeFile = target_path + ".s";
-        std::ofstream outputStream;
-        outputStream.open(codeFile, std::ios::out);
-
-        CodeGenerate codeGenerator(m.get());
-        auto ansCode = codeGenerator.generate();
-        outputStream << ansCode;
-
-        outputStream.close();
     }
     return 0;
 }
