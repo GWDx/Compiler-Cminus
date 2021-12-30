@@ -11,6 +11,15 @@ using std::to_string;
 
 map<int, bool> allRegister;
 map<Value*, string> valueToRegister;
+std::vector<std::string> lines;
+
+void append(std::string s) {
+    lines.push_back(s);
+}
+
+void appendTab(std::string s) {
+    lines.push_back("\t" + s);
+}
 
 string getEmptyRegister(Value* value) {
     int i;
@@ -34,14 +43,42 @@ string valueToRegOrConstant(Value* value) {
     return ans;
 }
 
+void binaryInstGenerate(Instruction* instruction) {
+    map<Instruction::OpID, string> opToName;
+    opToName[Instruction::add] = "addl";
+    opToName[Instruction::sub] = "subl";
+    opToName[Instruction::mul] = "imull";
+    // opToName[Instruction::sdiv] = "idivl";
+
+    Value* value = instruction;
+    auto instructionType = instruction->get_instr_type();
+    string name = opToName[instruction->get_instr_type()];
+
+    auto value1 = instruction->get_operand(0);
+    auto value2 = instruction->get_operand(1);
+    auto regOrConstant1 = valueToRegOrConstant(value1);
+    auto regOrConstant2 = valueToRegOrConstant(value2);
+    auto reg = getEmptyRegister(value);
+    if (instruction->is_div()) {
+        appendTab("movq	" + regOrConstant1 + ", " + "%rax");
+        appendTab("movl	" + regOrConstant2 + ", " + reg);
+        appendTab("cltd");
+        appendTab("idivl	" + reg);
+        appendTab("movl	%eax, " + reg);
+    } else {
+        appendTab("movl	" + regOrConstant1 + ", " + reg);
+        appendTab(name + "	" + regOrConstant2 + ", " + reg);
+    }
+}
 string CodeGenerate::generate() {
     int i, functionEndNumber = 0;
     FOR (i, 8, 15)
         allRegister[i] = true;
+    lines.clear();
 
     append(".text");
     append(".globl main");
-    append(".p2align	4, 0x90");
+    // append(".p2align	4, 0x90");
 
     for (auto& function : module->get_functions()) {
         if (function->get_num_basic_blocks()) {
@@ -51,22 +88,14 @@ string CodeGenerate::generate() {
             appendTab(".cfi_startproc");
             appendTab("pushq	%rbp");
             appendTab("movq	%rsp, %rbp");
-            // appendTab("subp	%rsp, 16");
+            // appendTab("subq	$16, %rsp");
 
             for (auto basicblock : function->get_basic_blocks()) {
                 for (auto instruction : basicblock->get_instructions()) {
                     Value* value = instruction;
                     auto instructionType = instruction->get_instr_type();
-                    if (instructionType == Instruction::add) {
-                        auto value1 = instruction->get_operand(0);
-                        auto value2 = instruction->get_operand(1);
-                        auto regOrConstant1 = valueToRegOrConstant(value1);
-                        auto regOrConstant2 = valueToRegOrConstant(value2);
-
-                        auto reg = getEmptyRegister(value);
-                        appendTab("movl	" + regOrConstant1 + ", " + reg);
-                        appendTab("addl	" + regOrConstant2 + ", " + reg);
-                    }
+                    if (instruction->isBinary())
+                        binaryInstGenerate(instruction);
 
                     if (instructionType == Instruction::ret) {
                         // auto returnInstruction = dynamic_cast<ReturnInst*>(instruction);
