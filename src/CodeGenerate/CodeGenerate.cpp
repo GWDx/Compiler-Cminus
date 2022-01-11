@@ -6,12 +6,19 @@
 using std::map;
 using std::string;
 using std::to_string;
+using std::vector;
+Module* module;
 
 #define FOR(i, l, r) for (i = l; i <= r; i++)
 
+#define floatType module->get_float_type()
+#define int32Type module->get_int32_type()
+#define int1Type module->get_int1_type()
+#define voidType module->get_void_type()
+
 map<int, bool> allRegister;
 map<Value*, string> valueToRegister;
-std::vector<std::string> lines;
+vector<string> lines;
 
 void append(std::string s) {
     lines.push_back(s);
@@ -70,7 +77,21 @@ void binaryInstGenerate(Instruction* instruction) {
         appendTab(name + "	" + regOrConstant2 + ", " + reg);
     }
 }
+
+void callInstGenerate(Instruction* instruction) {
+    auto callInstruction = dynamic_cast<CallInst*>(instruction);
+    auto operands = callInstruction->get_operands();
+    auto returnType = callInstruction->get_type();
+    auto functionName = operands[0]->get_name();
+
+    // for (auto operand : operands)
+    //     appendTab("push	");
+    if (returnType == voidType)
+        appendTab("call	" + functionName);
+}
+
 string CodeGenerate::generate() {
+    ::module = CodeGenerate::module;
     int i, functionEndNumber = 0;
     FOR (i, 8, 15)
         allRegister[i] = true;
@@ -96,6 +117,9 @@ string CodeGenerate::generate() {
                     auto instructionType = instruction->get_instr_type();
                     if (instruction->isBinary())
                         binaryInstGenerate(instruction);
+
+                    if (instruction->is_call())
+                        callInstGenerate(instruction);
 
                     if (instructionType == Instruction::ret) {
                         // auto returnInstruction = dynamic_cast<ReturnInst*>(instruction);
