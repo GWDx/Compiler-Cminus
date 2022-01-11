@@ -16,11 +16,11 @@ Module* module;
 #define int1Type module->get_int1_type()
 #define voidType module->get_void_type()
 
-map<int, bool> allRegister;
-map<Value*, string> valueToRegister;
+map<int, Value*> allRegister;
+map<Value*, string> valueToRegister, valueToAddress;
 vector<string> lines;
 
-void append(std::string s) {
+void append(std::string s = "") {
     lines.push_back(s);
 }
 
@@ -31,13 +31,24 @@ void appendTab(std::string s) {
 string getEmptyRegister(Value* value) {
     int i;
     FOR (i, 8, 15)
-        if (allRegister[i]) {
-            allRegister[i] = false;
+        if (allRegister[i] == nullptr) {
+            allRegister[i] = value;
             string ans = "%r" + to_string(i) + "d";
             valueToRegister[value] = ans;
             return ans;
         }
     return "";
+}
+
+string getAddress(Value* value) {
+    static int top = 0;
+    if (valueToAddress[value] == "") {
+        top += 4;
+        string ans = "-" + to_string(top) + "(%rbp)";
+        valueToAddress[value] = ans;
+        return ans;
+    }
+    return valueToAddress[value];
 }
 
 string valueToRegOrConstant(Value* value) {
@@ -67,7 +78,7 @@ void binaryInstGenerate(Instruction* instruction) {
     auto regOrConstant2 = valueToRegOrConstant(value2);
     auto reg = getEmptyRegister(value);
     if (instruction->is_div()) {
-        appendTab("movq	" + regOrConstant1 + ", " + "%rax");
+        appendTab("movq	" + regOrConstant1 + ", %rax");
         appendTab("movl	" + regOrConstant2 + ", " + reg);
         appendTab("cltd");
         appendTab("idivl	" + reg);
@@ -88,13 +99,18 @@ void callInstGenerate(Instruction* instruction) {
     //     appendTab("push	");
     if (returnType == voidType)
         appendTab("call	" + functionName);
+    else if (returnType == int32Type) {
+        appendTab("call	" + functionName);
+        appendTab("movl	%eax, " + getAddress(callInstruction));
+        appendTab("movl	%eax, " + getEmptyRegister(callInstruction));
+    }
 }
 
 string CodeGenerate::generate() {
     ::module = CodeGenerate::module;
     int i, functionEndNumber = 0;
     FOR (i, 8, 15)
-        allRegister[i] = true;
+        allRegister[i] = nullptr;
     lines.clear();
 
     append(".text");
@@ -109,7 +125,7 @@ string CodeGenerate::generate() {
             appendTab(".cfi_startproc");
             appendTab("pushq	%rbp");
             appendTab("movq	%rsp, %rbp");
-            // appendTab("subq	$16, %rsp");
+            appendTab("subq	$16, %rsp");  // conditional
 
             for (auto basicblock : function->get_basic_blocks()) {
                 for (auto instruction : basicblock->get_instructions()) {
@@ -128,6 +144,7 @@ string CodeGenerate::generate() {
                             auto regOrConstant = valueToRegOrConstant(value);
                             appendTab("movl	" + regOrConstant + ", %eax");
                         }
+                        appendTab("addq	$16, %rsp");  // conditional
                         appendTab("popq	%rbp");
                         appendTab("retq");
                     }
