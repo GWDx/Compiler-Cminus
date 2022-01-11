@@ -10,6 +10,7 @@ using std::vector;
 Module* module;
 
 #define FOR(i, l, r) for (i = l; i <= r; i++)
+#define FORDOWN(i, r, l) for (i = r; i >= l; i--)
 
 #define floatType module->get_float_type()
 #define int32Type module->get_int32_type()
@@ -90,20 +91,24 @@ void binaryInstGenerate(Instruction* instruction) {
 }
 
 void callInstGenerate(Instruction* instruction) {
-    auto callInstruction = dynamic_cast<CallInst*>(instruction);
-    auto operands = callInstruction->get_operands();
-    auto returnType = callInstruction->get_type();
+    // auto callInstruction = dynamic_cast<CallInst*>(instruction);
+    auto operands = instruction->get_operands();
+    auto returnType = instruction->get_type();
     auto functionName = operands[0]->get_name();
+    int operandNumber = operands.size();
+    int i;
 
-    // for (auto operand : operands)
-    //     appendTab("push	");
+    FORDOWN (i, operandNumber - 1, 1)
+        appendTab("pushq	" + valueToRegOrConstant(operands[i]));
     if (returnType == voidType)
         appendTab("call	" + functionName);
     else if (returnType == int32Type) {
         appendTab("call	" + functionName);
-        appendTab("movl	%eax, " + getAddress(callInstruction));
-        appendTab("movl	%eax, " + getEmptyRegister(callInstruction));
+        appendTab("movl	%eax, " + getAddress(instruction));
+        appendTab("movl	%eax, " + getEmptyRegister(instruction));
     }
+    FORDOWN (i, operandNumber - 1, 1)
+        appendTab("popq	%rax");
 }
 
 string CodeGenerate::generate() {
@@ -119,13 +124,19 @@ string CodeGenerate::generate() {
 
     for (auto& function : module->get_functions()) {
         if (function->get_num_basic_blocks()) {
-            append("");
+            append();
             append(function->get_name() + ":");
 
             appendTab(".cfi_startproc");
             appendTab("pushq	%rbp");
             appendTab("movq	%rsp, %rbp");
             appendTab("subq	$16, %rsp");  // conditional
+
+            int position = 8;
+            for (auto arg : function->get_args()) {
+                position += 8;
+                appendTab("movl	" + to_string(position) + "(%rbp), " + getEmptyRegister(arg));
+            }
 
             for (auto basicblock : function->get_basic_blocks()) {
                 for (auto instruction : basicblock->get_instructions()) {
