@@ -122,21 +122,39 @@ void callInstGenerate(Instruction* instruction) {
     // auto callInstruction = dynamic_cast<CallInst*>(instruction);
     auto operands = instruction->get_operands();
     auto returnType = instruction->get_type();
-    auto functionName = operands[0]->get_name();
+    auto callFunctionName = operands[0]->get_name();
     int operandNumber = operands.size();
     int i;
 
     FORDOWN (i, operandNumber - 1, 1)
         appendTab("pushq	" + valueToRegOrConstant(operands[i]));
     if (returnType == voidType)
-        appendTab("call	" + functionName);
+        appendTab("call	" + callFunctionName);
     else if (returnType == int32Type) {
-        appendTab("call	" + functionName);
+        appendTab("call	" + callFunctionName);
         appendTab("movl	%eax, " + getAddress(instruction));
         appendTab("movl	%eax, " + getEmptyRegister(instruction));
     }
     FORDOWN (i, operandNumber - 1, 1)
         appendTab("popq	%rax");
+}
+
+void brInstGenerate(Instruction* instruction) {
+    // auto brInstruction = dynamic_cast<BranchInst*>(instruction);
+    string functionName = instruction->get_function()->get_name();
+    auto operands = instruction->get_operands();
+    if (operands.size() == 1) {
+        string labelName = operands[0]->get_name();
+        appendTab("jmp		." + functionName + "_" + labelName);
+    } else {
+        auto condition = operands[0];
+        string labelName1 = operands[1]->get_name();
+        string labelName2 = operands[2]->get_name();
+
+        appendTab("cmpl	$0, " + valueToRegister[condition]);
+        appendTab("jne		." + functionName + "_" + labelName1);
+        appendTab("jmp		." + functionName + "_" + labelName2);
+    }
 }
 
 string CodeGenerate::generate() {
@@ -166,8 +184,10 @@ string CodeGenerate::generate() {
                 appendTab("movl	" + to_string(position) + "(%rbp), " + getEmptyRegister(arg));
             }
 
-            for (auto basicblock : function->get_basic_blocks()) {
-                for (auto instruction : basicblock->get_instructions()) {
+            string functionName = function->get_name();
+            for (auto basicBlock : function->get_basic_blocks()) {
+                append("." + functionName + "_" + basicBlock->get_name() + ":");
+                for (auto instruction : basicBlock->get_instructions()) {
                     Value* value = instruction;
                     auto instructionType = instruction->get_instr_type();
                     if (instruction->isBinary())
@@ -178,6 +198,8 @@ string CodeGenerate::generate() {
                         zextInstGenerate(instruction);
                     else if (instruction->is_call())
                         callInstGenerate(instruction);
+                    else if (instruction->is_br())
+                        brInstGenerate(instruction);
 
                     if (instructionType == Instruction::ret) {
                         // auto returnInstruction = dynamic_cast<ReturnInst*>(instruction);
