@@ -90,6 +90,34 @@ void binaryInstGenerate(Instruction* instruction) {
     }
 }
 
+void cmpInstGenerate(Instruction* instruction) {
+    map<CmpInst::CmpOp, string> opToName;
+    opToName[CmpInst::EQ] = "sete";
+    opToName[CmpInst::NE] = "setne";
+    opToName[CmpInst::GT] = "setg";
+    opToName[CmpInst::GE] = "setge";
+    opToName[CmpInst::LT] = "setl";
+    opToName[CmpInst::LE] = "setle";
+
+    auto cmpInstruction = dynamic_cast<CmpInst*>(instruction);
+    auto value1 = instruction->get_operand(0);
+    auto value2 = instruction->get_operand(1);
+    auto regOrConstant1 = valueToRegOrConstant(value1);
+    auto regOrConstant2 = valueToRegOrConstant(value2);
+    auto reg = getEmptyRegister(instruction);
+
+    appendTab("movl	" + regOrConstant1 + ", " + reg);
+    string name = opToName[cmpInstruction->get_cmp_op()];
+    appendTab("cmpl	" + regOrConstant2 + ", " + reg);
+    appendTab(name + "	%cl");
+    appendTab("movzbl	%cl, " + reg);
+}
+
+void zextInstGenerate(Instruction* instruction) {
+    auto rightValue = instruction->get_operand(0);
+    valueToRegister[instruction] = valueToRegister[rightValue];
+}
+
 void callInstGenerate(Instruction* instruction) {
     // auto callInstruction = dynamic_cast<CallInst*>(instruction);
     auto operands = instruction->get_operands();
@@ -144,8 +172,11 @@ string CodeGenerate::generate() {
                     auto instructionType = instruction->get_instr_type();
                     if (instruction->isBinary())
                         binaryInstGenerate(instruction);
-
-                    if (instruction->is_call())
+                    else if (instruction->is_cmp())
+                        cmpInstGenerate(instruction);
+                    else if (instruction->is_zext())
+                        zextInstGenerate(instruction);
+                    else if (instruction->is_call())
                         callInstGenerate(instruction);
 
                     if (instructionType == Instruction::ret) {
