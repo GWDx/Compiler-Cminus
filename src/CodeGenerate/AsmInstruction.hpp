@@ -42,7 +42,7 @@ public:
 
 string addq("addq"), addl("addl"), subl("subl"), subq("subq"), imull("imull"), idivl("idivl");
 string sete("sete"), setne("setne"), setg("setg"), setge("setge"), setl("setl"), setle("setle");
-string cmpl("cmpl");
+string cmpl("cmpl"), jmp("jmp"), jne("jne");
 string movq("movq"), movl("movl"), movzbl("movzbl"), cltd("cltd");
 string popq("popq"), pushq("pushq"), retq("retq"), call("call");
 
@@ -70,7 +70,12 @@ public:
     void cmpInstGenerate(Instruction* instruction);
     void zextInstGenerate(Instruction* instruction);
     void callInstGenerate(Instruction* instruction);
+    void brInstGenerate(Instruction* instruction);
 };
+
+string genLabelName(string functionName, string basicBlockName) {
+    return "." + functionName + "_" + basicBlockName;
+}
 
 class AsmFunction {
 public:
@@ -116,7 +121,7 @@ public:
             appendLineTab(instruction.print());
 
         for (auto block : allBlock) {
-            appendLine("." + functionName + "_" + block.basicBlock->get_name() + ":");
+            appendLine(genLabelName(functionName, block.name) + ":");
             for (auto instruction : block.allInstruction)
                 appendLineTab(instruction.print());
         }

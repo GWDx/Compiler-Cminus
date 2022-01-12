@@ -44,6 +44,8 @@ void AsmBlock::generate() {
             zextInstGenerate(instruction);
         else if (instruction->is_call())
             callInstGenerate(instruction);
+        else if (instruction->is_br())
+            brInstGenerate(instruction);
     }
 }
 
@@ -128,4 +130,26 @@ void AsmBlock::callInstGenerate(Instruction* instruction) {
         appendInst(movl, eax, getEmptyRegister(instruction));
     }
     appendInst(addq, ConstInteger(8 * (operandNumber - 1)), rsp);
+}
+
+void AsmBlock::brInstGenerate(Instruction* instruction) {
+    // auto brInstruction = dynamic_cast<BranchInst*>(instruction);
+    string functionName = instruction->get_function()->get_name();
+    auto operands = instruction->get_operands();
+    if (operands.size() == 1) {
+        string basicBlockName = operands[0]->get_name();
+        string labelName = genLabelName(functionName, basicBlockName);
+        appendInst(jmp, Position(labelName));
+    } else {
+        auto condition = operands[0];
+        string basicBlockName1 = operands[1]->get_name();
+        string basicBlockName2 = operands[2]->get_name();
+        string labelName1 = genLabelName(functionName, basicBlockName1);
+        string labelName2 = genLabelName(functionName, basicBlockName2);
+
+        // appendInst(cmpl, valueToRegister[condition]);
+        appendInst(cmpl, ConstInteger(0), getPosition(condition));
+        appendInst(jne, Position(labelName1));
+        appendInst(jmp, Position(labelName2));
+    }
 }
