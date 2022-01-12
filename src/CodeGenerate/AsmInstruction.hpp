@@ -54,8 +54,13 @@ public:
         this->basicBlock = basicBlock;
         name = basicBlock->get_name();
     }
+    void appendInst(string name) { allInstruction.push_back(AsmInstruction(name)); }
+    void appendInst(string name, Position& p1) { allInstruction.push_back(AsmInstruction(name, p1)); }
+    void appendInst(string name, Position& p1, Position& p2) { allInstruction.push_back(AsmInstruction(name, p1, p2)); }
 
     void generate();
+    void retInstGenerate(Instruction* instruction);
+    void binaryInstGenerate(Instruction* instruction);
 };
 
 class AsmFunction {
@@ -89,28 +94,29 @@ public:
             block.generate();
     }
 
-#define append(s) ans += s + "\n"
-#define appendTab(s) ans += string("\t") + s + "\n"
+#define appendLine(s) ans += s + "\n"
+#define appendLineTab(s) ans += string("\t") + s + "\n"
 
     string print() {
         string ans;
         string functionName = function->get_name();
 
-        append(function->get_name() + ":");
-        appendTab(".cfi_startproc");
+        appendLine(function->get_name() + ":");
+        appendLineTab(".cfi_startproc");
         for (auto instruction : initInst)
-            appendTab(instruction.print());
+            appendLineTab(instruction.print());
 
         for (auto block : allBlock) {
-            append("." + functionName + "_" + block.basicBlock->get_name() + ":");
+            appendLine("." + functionName + "_" + block.basicBlock->get_name() + ":");
             for (auto instruction : block.allInstruction)
-                appendTab(instruction.print());
+                appendLineTab(instruction.print());
         }
-
-        append(".Lfunc_end" + to_string(functionEndNumber) + ":");
-        appendTab(".cfi_endproc");
+        appendLine(".Lfunc_end" + to_string(functionEndNumber) + ":");
+        appendLineTab(".cfi_endproc");
         return ans;
     }
+#undef appendLine
+#undef appendLineTab
 };
 
 #endif

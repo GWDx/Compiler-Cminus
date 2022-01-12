@@ -9,21 +9,6 @@
 
 Module* module;
 
-void AsmBlock::generate() {
-    for (auto instruction : basicBlock->get_instructions()) {
-        auto instructionType = instruction->get_instr_type();
-        if (instructionType == Instruction::ret) {
-            if (instruction->get_num_operand()) {
-                auto value = instruction->get_operand(0);
-                allInstruction.push_back(AsmInstruction("movl", getPosition(value), eax));
-            }
-            allInstruction.push_back(AsmInstruction("addq", ConstInteger(asmFunction->stackSpace), rsp));
-            allInstruction.push_back(AsmInstruction("popq", rbp));
-            allInstruction.push_back(AsmInstruction("retq"));
-        }
-    }
-}
-
 string CodeGenerate::generate() {
     ::module = CodeGenerate::module;
     int i;
@@ -45,4 +30,49 @@ string CodeGenerate::generate() {
         delete asmFunction;
     }
     return ansCode;
+}
+
+void AsmBlock::generate() {
+    for (auto instruction : basicBlock->get_instructions()) {
+        if (instruction->is_ret())
+            retInstGenerate(instruction);
+        else if (instruction->isBinary())
+            binaryInstGenerate(instruction);
+    }
+}
+
+void AsmBlock::retInstGenerate(Instruction* instruction) {
+    if (instruction->get_num_operand()) {
+        auto value = instruction->get_operand(0);
+        allInstruction.push_back(AsmInstruction("movl", getPosition(value), eax));
+    }
+    appendInst("addq", ConstInteger(asmFunction->stackSpace), rsp);
+    appendInst("popq", rbp);
+    appendInst("retq");
+}
+
+void AsmBlock::binaryInstGenerate(Instruction* instruction) {
+    map<Instruction::OpID, string> opToName;
+    opToName[Instruction::add] = "addl";
+    opToName[Instruction::sub] = "subl";
+    opToName[Instruction::mul] = "imull";
+
+    Value* value = instruction;
+    auto instructionType = instruction->get_instr_type();
+    string name = opToName[instruction->get_instr_type()];
+    auto value1 = instruction->get_operand(0);
+    auto value2 = instruction->get_operand(1);
+    auto regOrConstant1 = getPosition(value1);
+    auto regOrConstant2 = getPosition(value2);
+    auto reg = getEmptyRegister(value);
+    if (instruction->is_div()) {
+        appendInst("movq", regOrConstant1, rax);
+        appendInst("movl", regOrConstant2, reg);
+        appendInst("cltd");
+        appendInst("idivl", reg);
+        appendInst("movl", eax, reg);
+    } else {
+        appendInst("movl", regOrConstant1, reg);
+        appendInst(name, regOrConstant2, reg);
+    }
 }
