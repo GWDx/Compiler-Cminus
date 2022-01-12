@@ -28,7 +28,7 @@ public:
     ConstInteger(int value) { name = "$" + to_string(value); }
 };
 
-Register rbp("rbp"), rsp("rsp"), eax("eax"), rax("rax");
+Register rbp("rbp"), rsp("rsp"), eax("eax"), rax("rax"), cl("cl");
 
 map<Value*, Register*> valueToRegister;
 map<Value*, MemoryAddress*> valueToAddress;
@@ -68,8 +68,9 @@ Position& getPosition(Value* value) {
 
     if (constantValue)
         return ConstInteger(constantValue->get_value());
-    // return Position("NonePosition");
-    return *valueToRegister[value];  // ?
+    if (valueToRegister[value])
+        return *valueToRegister[value];
+    return Position("NonePosition");
 }
 
 #endif

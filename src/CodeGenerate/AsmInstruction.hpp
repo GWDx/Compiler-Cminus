@@ -41,7 +41,9 @@ public:
 };
 
 string addq("addq"), addl("addl"), subl("subl"), subq("subq"), imull("imull"), idivl("idivl");
-string movq("movq"), movl("movl"), cltd("cltd");
+string sete("sete"), setne("setne"), setg("setg"), setge("setge"), setl("setl"), setle("setle");
+string cmpl("cmpl");
+string movq("movq"), movl("movl"), movzbl("movzbl"), cltd("cltd");
 string popq("popq"), pushq("pushq"), retq("retq"), call("call");
 
 class AsmFunction;
@@ -65,6 +67,8 @@ public:
     void generate();
     void retInstGenerate(Instruction* instruction);
     void binaryInstGenerate(Instruction* instruction);
+    void cmpInstGenerate(Instruction* instruction);
+    void zextInstGenerate(Instruction* instruction);
     void callInstGenerate(Instruction* instruction);
 };
 
@@ -88,7 +92,7 @@ public:
     void generate() {
         initInst.push_back(AsmInstruction(pushq, rbp));
         initInst.push_back(AsmInstruction(movq, rsp, rbp));
-        initInst.push_back(AsmInstruction(subq, ConstInteger(stackSpace), rsp));
+        initInst.push_back(AsmInstruction(subq, ConstInteger(stackSpace), rsp));  // ?
 
         int position = 8;
         for (auto arg : function->get_args()) {
