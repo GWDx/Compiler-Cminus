@@ -9,7 +9,6 @@ public:
 
     Position() {}
     Position(string name) { this->name = name; }
-    Position(const char* name) { this->name = string(name); }
     Position(Value* value) {}
 };
 
@@ -17,13 +16,11 @@ class Register : public Position {
 public:
     Register() {}
     Register(string name) { this->name = "%" + name; }
-    Register(const char* name) { this->name = "%" + string(name); }
 };
 
 class MemoryAddress : public Position {
 public:
-    MemoryAddress(string name) { this->name = "%" + name; }
-    MemoryAddress(const char* name) { this->name = "%" + string(name); }
+    MemoryAddress(int offset, Register reg) { this->name = to_string(offset) + "(" + reg.name + ")"; }
 };
 
 class ConstInteger : public Position {
@@ -39,14 +36,14 @@ map<int, Value*> allRegister;
 
 #define Position(x) *new Position(x)
 #define Register(x) *new Register(x)
-#define MemoryAddress(x) *new MemoryAddress(x)
+#define MemoryAddress(x, y) *new MemoryAddress(x, y)
 #define ConstInteger(x) *new ConstInteger(x)
 
 MemoryAddress& getAddress(Value* value) {
     static int top = 0;
-    if (valueToAddress.count(value)) {
+    if (valueToAddress.count(value) == 0) {
         top += 4;
-        MemoryAddress& ans = MemoryAddress("-" + to_string(top) + "(%rbp)");
+        MemoryAddress& ans = MemoryAddress(-top, rbp);
         valueToAddress[value] = &ans;
         return ans;
     }

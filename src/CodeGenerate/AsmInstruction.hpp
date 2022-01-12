@@ -40,6 +40,10 @@ public:
     }
 };
 
+string addq("addq"), addl("addl"), subl("subl"), subq("subq"), imull("imull"), idivl("idivl");
+string movq("movq"), movl("movl"), cltd("cltd");
+string popq("popq"), pushq("pushq"), retq("retq"), call("call");
+
 class AsmFunction;
 
 class AsmBlock {
@@ -61,6 +65,7 @@ public:
     void generate();
     void retInstGenerate(Instruction* instruction);
     void binaryInstGenerate(Instruction* instruction);
+    void callInstGenerate(Instruction* instruction);
 };
 
 class AsmFunction {
@@ -81,14 +86,14 @@ public:
     }
 
     void generate() {
-        initInst.push_back(AsmInstruction("pushq", rbp));
-        initInst.push_back(AsmInstruction("movq", rsp, rbp));
-        initInst.push_back(AsmInstruction("subq", ConstInteger(stackSpace), rsp));
+        initInst.push_back(AsmInstruction(pushq, rbp));
+        initInst.push_back(AsmInstruction(movq, rsp, rbp));
+        initInst.push_back(AsmInstruction(subq, ConstInteger(stackSpace), rsp));
 
         int position = 8;
         for (auto arg : function->get_args()) {
             position += 8;
-            initInst.push_back(AsmInstruction("movl", Position(to_string(position) + "(%rbp)"), getPosition(arg)));
+            initInst.push_back(AsmInstruction(movl, MemoryAddress(position, rbp), getEmptyRegister(arg)));
         }
         for (auto& block : allBlock)
             block.generate();

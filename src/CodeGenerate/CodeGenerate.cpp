@@ -38,6 +38,8 @@ void AsmBlock::generate() {
             retInstGenerate(instruction);
         else if (instruction->isBinary())
             binaryInstGenerate(instruction);
+        else if (instruction->is_call())
+            callInstGenerate(instruction);
     }
 }
 
@@ -46,33 +48,54 @@ void AsmBlock::retInstGenerate(Instruction* instruction) {
         auto value = instruction->get_operand(0);
         allInstruction.push_back(AsmInstruction("movl", getPosition(value), eax));
     }
-    appendInst("addq", ConstInteger(asmFunction->stackSpace), rsp);
-    appendInst("popq", rbp);
-    appendInst("retq");
+    appendInst(addq, ConstInteger(asmFunction->stackSpace), rsp);
+    appendInst(popq, rbp);
+    appendInst(retq);
 }
 
 void AsmBlock::binaryInstGenerate(Instruction* instruction) {
     map<Instruction::OpID, string> opToName;
-    opToName[Instruction::add] = "addl";
-    opToName[Instruction::sub] = "subl";
-    opToName[Instruction::mul] = "imull";
+    opToName[Instruction::add] = addl;
+    opToName[Instruction::sub] = subl;
+    opToName[Instruction::mul] = imull;
 
     Value* value = instruction;
     auto instructionType = instruction->get_instr_type();
-    string name = opToName[instruction->get_instr_type()];
+    auto instName = opToName[instruction->get_instr_type()];
     auto value1 = instruction->get_operand(0);
     auto value2 = instruction->get_operand(1);
     auto regOrConstant1 = getPosition(value1);
     auto regOrConstant2 = getPosition(value2);
     auto reg = getEmptyRegister(value);
     if (instruction->is_div()) {
-        appendInst("movq", regOrConstant1, rax);
-        appendInst("movl", regOrConstant2, reg);
-        appendInst("cltd");
-        appendInst("idivl", reg);
-        appendInst("movl", eax, reg);
+        appendInst(movq, regOrConstant1, rax);
+        appendInst(movl, regOrConstant2, reg);
+        appendInst(cltd);
+        appendInst(idivl, reg);
+        appendInst(movl, eax, reg);
     } else {
-        appendInst("movl", regOrConstant1, reg);
-        appendInst(name, regOrConstant2, reg);
+        appendInst(movl, regOrConstant1, reg);
+        appendInst(instName, regOrConstant2, reg);
     }
+}
+
+void AsmBlock::callInstGenerate(Instruction* instruction) {
+    // auto callInstruction = dynamic_cast<CallInst*>(instruction);
+    auto operands = instruction->get_operands();
+    auto returnType = instruction->get_type();
+    auto callFunctionName = operands[0]->get_name();
+    int operandNumber = operands.size();
+    int i;
+
+    FORDOWN (i, operandNumber - 1, 1)
+        appendInst(pushq, getPosition(operands[i]));
+    if (returnType == voidType)
+        appendInst(call, Position(callFunctionName));
+    else if (returnType == int32Type) {
+        appendInst(call, Position(callFunctionName));
+        appendInst(movl, eax, getAddress(instruction));
+        appendInst(movl, eax, getEmptyRegister(instruction));
+    }
+    FORDOWN (i, operandNumber - 1, 1)
+        appendInst("popq	%rax");
 }
