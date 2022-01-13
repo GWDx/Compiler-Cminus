@@ -71,11 +71,14 @@ public:
     void zextInstGenerate(Instruction* instruction);
     void callInstGenerate(Instruction* instruction);
     void brInstGenerate(Instruction* instruction);
+    void phiInstGenerate(Instruction* instruction);
 };
 
 string genLabelName(string functionName, string basicBlockName) {
     return "." + functionName + "_" + basicBlockName;
 }
+
+map<BasicBlock*, AsmBlock*> basicBlockToAsmBlock;
 
 class AsmFunction {
 public:
@@ -89,9 +92,11 @@ public:
     AsmFunction(Function* function, int functionEndNumber) {
         this->function = function;
         this->functionEndNumber = functionEndNumber;
-
+        int i;
         for (auto basicBlock : function->get_basic_blocks())
             allBlock.push_back(AsmBlock(this, basicBlock));
+        FOR (i, 0, allBlock.size() - 1)
+            basicBlockToAsmBlock[allBlock[i].basicBlock] = &allBlock[i];
     }
 
     void generate() {

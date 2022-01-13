@@ -46,6 +46,8 @@ void AsmBlock::generate() {
             callInstGenerate(instruction);
         else if (instruction->is_br())
             brInstGenerate(instruction);
+        else if (instruction->is_phi())
+            phiInstGenerate(instruction);
     }
 }
 
@@ -133,7 +135,6 @@ void AsmBlock::callInstGenerate(Instruction* instruction) {
 }
 
 void AsmBlock::brInstGenerate(Instruction* instruction) {
-    // auto brInstruction = dynamic_cast<BranchInst*>(instruction);
     string functionName = instruction->get_function()->get_name();
     auto operands = instruction->get_operands();
     if (operands.size() == 1) {
@@ -151,5 +152,24 @@ void AsmBlock::brInstGenerate(Instruction* instruction) {
         appendInst(cmpl, ConstInteger(0), getPosition(condition));
         appendInst(jne, Position(labelName1));
         appendInst(jmp, Position(labelName2));
+    }
+}
+
+void AsmBlock::phiInstGenerate(Instruction* instruction) {
+    int i;
+    vector<AsmInstruction>::iterator iter;
+    auto operands = instruction->get_operands();
+    auto reg = getEmptyRegister(instruction);
+    FOR (i, 0, operands.size() / 2 - 1) {
+        auto value = operands[2 * i];
+        auto label = operands[2 * i + 1];
+        auto basicBlock = static_cast<BasicBlock*>(label);
+        auto asmBlock = basicBlockToAsmBlock[basicBlock];
+
+        auto& allInstruction = asmBlock->allInstruction;
+        for (iter = allInstruction.end() - 1; iter >= allInstruction.begin(); iter--)
+            if (iter->name != jmp and iter->name != jne)  //
+                break;
+        allInstruction.insert(iter + 1, AsmInstruction(movl, getPosition(value), reg));
     }
 }
