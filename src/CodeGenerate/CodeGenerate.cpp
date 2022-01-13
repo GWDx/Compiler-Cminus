@@ -161,14 +161,24 @@ void AsmBlock::callInstGenerate(Instruction* instruction) {
     auto returnType = instruction->get_type();
     auto callFunctionName = operands[0]->get_name();
     int operandNumber = operands.size();
-    int i;
-
-    FORDOWN (i, operandNumber - 1, 7)
-        appendInst(pushq, getPosition(operands[i]));
-    FORDOWN (i, std::min(operandNumber - 1, 6), 1)
-        if (operands[i]->get_type() == int32Type)
-            appendInst(movl, getPosition(operands[i]), *functionArgRegister[i - 1]);
-    // else
+    int i, intRegisterIndex = 0, floatRegisterIndex = 0;
+    vector<AsmInstruction> stackInstruction;
+    FOR (i, 1, operandNumber - 1) {
+        Position& position = getPosition(operands[i]);
+        if (operands[i]->get_type() == int32Type) {
+            if (intRegisterIndex < argIntRegister.size())
+                stackInstruction.push_back(AsmInstruction(movl, position, *argIntRegister[intRegisterIndex++]));
+            else
+                stackInstruction.push_back(AsmInstruction(pushq, position));
+        } else {
+            if (floatRegisterIndex < argFloatRegister.size())
+                stackInstruction.push_back(AsmInstruction(movss, position, *argFloatRegister[floatRegisterIndex++]));
+            else
+                stackInstruction.push_back(AsmInstruction(pushq, position));  // ?
+        }
+    }
+    for (auto iter = stackInstruction.rbegin(); iter != stackInstruction.rend(); iter++)
+        allInstruction.push_back(*iter);
 
     appendInst(call, Position(callFunctionName));
     if (returnType == int32Type) {
