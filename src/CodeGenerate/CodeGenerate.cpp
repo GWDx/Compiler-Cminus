@@ -2,13 +2,6 @@
 #include "AsmInstruction.hpp"
 #include "Position.hpp"
 
-#define floatType module->get_float_type()
-#define int32Type module->get_int32_type()
-#define int1Type module->get_int1_type()
-#define voidType module->get_void_type()
-
-Module* module;
-
 string CodeGenerate::generate() {
     ::module = CodeGenerate::module;
     int i;
@@ -16,8 +9,6 @@ string CodeGenerate::generate() {
         allRegister[i] = nullptr;
 
     string ansCode;
-    ansCode += ".text\n";
-    ansCode += ".globl main\n";
 
     int functionEndNumber = 0;
     for (auto& function : module->get_functions()) {
@@ -26,7 +17,7 @@ string CodeGenerate::generate() {
         functionEndNumber++;
         auto asmFunction = new AsmFunction(function, functionEndNumber);
         asmFunction->generate();
-        ansCode += "\n" + asmFunction->print();
+        ansCode += asmFunction->print();
         delete asmFunction;
     }
     return ansCode;
@@ -42,6 +33,10 @@ void AsmBlock::generate() {
             cmpInstGenerate(instruction);
         else if (instruction->is_zext())
             zextInstGenerate(instruction);
+        else if (instruction->is_fp2si())
+            fpToSiInstGenerate(instruction);
+        else if (instruction->is_si2fp())
+            siToFpInstGenerate(instruction);
         else if (instruction->is_call())
             callInstGenerate(instruction);
         else if (instruction->is_br())
@@ -66,24 +61,27 @@ void AsmBlock::binaryInstGenerate(Instruction* instruction) {
     opToName[Instruction::add] = addl;
     opToName[Instruction::sub] = subl;
     opToName[Instruction::mul] = imull;
+    opToName[Instruction::fadd] = addss;
+    opToName[Instruction::fsub] = subss;
+    opToName[Instruction::fmul] = mulss;
+    opToName[Instruction::fdiv] = divss;
 
-    Value* value = instruction;
-    auto instructionType = instruction->get_instr_type();
     auto instName = opToName[instruction->get_instr_type()];
     auto value1 = instruction->get_operand(0);
     auto value2 = instruction->get_operand(1);
-    auto regOrConstant1 = getPosition(value1);
-    auto regOrConstant2 = getPosition(value2);
-    auto reg = getEmptyRegister(value);
+    auto reg = getEmptyRegister(instruction);
     if (instruction->is_div()) {
-        appendInst(movq, regOrConstant1, rax);
-        appendInst(movl, regOrConstant2, reg);
+        appendInst(movq, getPosition(value1), rax);
+        appendInst(movl, getPosition(value2), reg);
         appendInst(cltd);
         appendInst(idivl, reg);
         appendInst(movl, eax, reg);
+    } else if (instruction->is_add() or instruction->is_sub() or instruction->is_mul()) {
+        appendInst(movl, getPosition(value1), reg);
+        appendInst(instName, getPosition(value2), reg);
     } else {
-        appendInst(movl, regOrConstant1, reg);
-        appendInst(instName, regOrConstant2, reg);
+        appendInst(movss, getPosition(value1), reg);
+        appendInst(instName, getPosition(value2), reg);
     }
 }
 
@@ -97,15 +95,13 @@ void AsmBlock::cmpInstGenerate(Instruction* instruction) {
     opToName[CmpInst::LE] = setle;
 
     auto cmpInstruction = dynamic_cast<CmpInst*>(instruction);
+    auto instName = opToName[cmpInstruction->get_cmp_op()];
     auto value1 = instruction->get_operand(0);
     auto value2 = instruction->get_operand(1);
-    auto regOrConstant1 = getPosition(value1);
-    auto regOrConstant2 = getPosition(value2);
     auto reg = getEmptyRegister(instruction);
 
-    appendInst(movl, regOrConstant1, reg);
-    string instName = opToName[cmpInstruction->get_cmp_op()];
-    appendInst(cmpl, regOrConstant2, reg);
+    appendInst(movl, getPosition(value1), reg);
+    appendInst(cmpl, getPosition(value2), reg);
     appendInst(instName, cl);
     appendInst(movzbl, cl, reg);
 }
@@ -113,6 +109,18 @@ void AsmBlock::cmpInstGenerate(Instruction* instruction) {
 void AsmBlock::zextInstGenerate(Instruction* instruction) {
     auto rightValue = instruction->get_operand(0);
     valueToRegister[instruction] = valueToRegister[rightValue];
+}
+
+void AsmBlock::fpToSiInstGenerate(Instruction* instruction) {
+    auto rightValue = instruction->get_operand(0);
+    appendInst(cvttss2si, getPosition(rightValue), getEmptyRegister(instruction));
+}
+
+void AsmBlock::siToFpInstGenerate(Instruction* instruction) {
+    auto rightValue = instruction->get_operand(0);
+    auto reg = getEmptyRegister(instruction);
+    appendInst(movl, getPosition(rightValue), eax);
+    appendInst(cvtsi2ssl, eax, reg);  // ConstInteger
 }
 
 void AsmBlock::callInstGenerate(Instruction* instruction) {

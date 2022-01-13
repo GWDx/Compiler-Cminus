@@ -41,9 +41,11 @@ public:
 };
 
 string addq("addq"), addl("addl"), subl("subl"), subq("subq"), imull("imull"), idivl("idivl");
+string addss("addss"), subss("subss"), mulss("mulss"), divss("divss");
+string cvttss2si("cvttss2si"), cvtsi2ssl("cvtsi2ssl");
 string sete("sete"), setne("setne"), setg("setg"), setge("setge"), setl("setl"), setle("setle");
 string cmpl("cmpl"), jmp("jmp"), jne("jne");
-string movq("movq"), movl("movl"), movzbl("movzbl"), cltd("cltd");
+string movq("movq"), movl("movl"), movzbl("movzbl"), movss("movss"), cltd("cltd");
 string popq("popq"), pushq("pushq"), retq("retq"), call("call");
 
 class AsmFunction;
@@ -64,7 +66,9 @@ public:
     void appendInst(string name, Position& p1) { allInstruction.push_back(AsmInstruction(name, p1)); }
     void appendInst(string name, Position& p1, Position& p2) { allInstruction.push_back(AsmInstruction(name, p1, p2)); }
 
+    Position& getPosition(Value* value);
     void generate();
+
     void retInstGenerate(Instruction* instruction);
     void binaryInstGenerate(Instruction* instruction);
     void cmpInstGenerate(Instruction* instruction);
@@ -72,6 +76,8 @@ public:
     void callInstGenerate(Instruction* instruction);
     void brInstGenerate(Instruction* instruction);
     void phiInstGenerate(Instruction* instruction);
+    void fpToSiInstGenerate(Instruction* instruction);
+    void siToFpInstGenerate(Instruction* instruction);
 };
 
 string genLabelName(string functionName, string basicBlockName) {
@@ -85,13 +91,16 @@ public:
     vector<AsmBlock> allBlock;
     vector<AsmInstruction> initInst;
     int stackSpace = 16;
-
+    vector<int> allConstInteger;
+    vector<string> allConstLabel;
     Function* function;
     int functionEndNumber;
+    string functionName;
 
     AsmFunction(Function* function, int functionEndNumber) {
         this->function = function;
         this->functionEndNumber = functionEndNumber;
+        functionName = function->get_name();
         int i;
         for (auto basicBlock : function->get_basic_blocks())
             allBlock.push_back(AsmBlock(this, basicBlock));
@@ -113,14 +122,26 @@ public:
             block.generate();
     }
 
-#define appendLine(s) ans += s + "\n"
+    string appendConst(int value) {
+        string labelName = genLabelName(functionName, to_string(allConstInteger.size()));
+        allConstInteger.push_back(value);
+        allConstLabel.push_back(labelName);
+        return labelName;
+    }
+
+#define appendLine(s) ans += s + string("\n")
 #define appendLineTab(s) ans += string("\t") + s + "\n"
 
     string print() {
+        int i;
         string ans;
-        string functionName = function->get_name();
-
-        appendLine(function->get_name() + ":");
+        FOR (i, 0, allConstLabel.size() - 1) {
+            appendLine(allConstLabel[i] + ":");
+            appendLineTab(".long	" + to_string(allConstInteger[i]));
+        }
+        appendLine(".text");
+        appendLine(".globl " + functionName);
+        appendLine(functionName + ":");
         appendLineTab(".cfi_startproc");
         for (auto instruction : initInst)
             appendLineTab(instruction.print());
@@ -137,5 +158,22 @@ public:
 #undef appendLine
 #undef appendLineTab
 };
+
+Position& AsmBlock::getPosition(Value* value) {
+    Register ans();
+    auto constantInt = dynamic_cast<ConstantInt*>(value);
+    auto constantFloat = dynamic_cast<ConstantFP*>(value);
+
+    if (constantInt)
+        return ConstInteger(constantInt->get_value());
+    if (constantFloat) {
+        float constantFloatValue = constantFloat->get_value();
+        string label = asmFunction->appendConst(*(int*)&constantFloatValue);
+        return MemoryAddress(label, rip);
+    }
+    if (valueToRegister[value])
+        return *valueToRegister[value];
+    return Position("NonePosition");
+}
 
 #endif

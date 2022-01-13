@@ -3,6 +3,14 @@
 
 #include "CodeGenerate.hpp"
 
+#define FOR(i, l, r) for (i = l; i <= (int)r; i++)
+#define FORDOWN(i, r, l) for (i = r; i >= l; i--)
+
+using std::map;
+using std::string;
+using std::to_string;
+using std::vector;
+
 class Position {
 public:
     string name;
@@ -21,6 +29,7 @@ public:
 class MemoryAddress : public Position {
 public:
     MemoryAddress(int offset, Register reg) { this->name = to_string(offset) + "(" + reg.name + ")"; }
+    MemoryAddress(string offset, Register reg) { this->name = offset + "(" + reg.name + ")"; }
 };
 
 class ConstInteger : public Position {
@@ -28,7 +37,7 @@ public:
     ConstInteger(int value) { name = "$" + to_string(value); }
 };
 
-Register rbp("rbp"), rsp("rsp"), eax("eax"), rax("rax"), cl("cl");
+Register rbp("rbp"), rsp("rsp"), rip("rip"), eax("eax"), rax("rax"), cl("cl");
 
 map<Value*, Register*> valueToRegister;
 map<Value*, MemoryAddress*> valueToAddress;
@@ -50,27 +59,33 @@ MemoryAddress& getAddress(Value* value) {
     return *valueToAddress[value];
 }
 
+#define floatType module->get_float_type()
+#define int32Type module->get_int32_type()
+#define int1Type module->get_int1_type()
+#define voidType module->get_void_type()
+
+Module* module;
+
 Register& getEmptyRegister(Value* value) {
     int i;
-    FOR (i, 8, 15)
-        if (allRegister[i] == nullptr) {
-            allRegister[i] = value;
-            Register& ans = Register("r" + to_string(i) + "d");
-            valueToRegister[value] = &ans;
-            return ans;
-        }
+    auto valueType = value->get_type();
+    if (valueType == int32Type)
+        FOR (i, 8, 15)
+            if (allRegister[i] == nullptr) {
+                allRegister[i] = value;
+                Register& ans = Register("r" + to_string(i) + "d");
+                valueToRegister[value] = &ans;
+                return ans;
+            }
+    if (valueType == floatType)
+        FOR (i, 8, 15)
+            if (allRegister[i] == nullptr) {
+                allRegister[i] = value;
+                Register& ans = Register("xmm" + to_string(i));
+                valueToRegister[value] = &ans;
+                return ans;
+            }
     return Register("NoneRegister");
-}
-
-Position& getPosition(Value* value) {
-    Register ans();
-    auto constantValue = dynamic_cast<ConstantInt*>(value);
-
-    if (constantValue)
-        return ConstInteger(constantValue->get_value());
-    if (valueToRegister[value])
-        return *valueToRegister[value];
-    return Position("NonePosition");
 }
 
 #endif
