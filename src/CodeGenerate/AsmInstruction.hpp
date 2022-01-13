@@ -117,13 +117,17 @@ public:
         initInst.push_back(AsmInstruction(movq, rsp, rbp));
         initInst.push_back(AsmInstruction(subq, ConstInteger(stackSpace), rsp));  // ?
 
-        int position = 8;
+        int i = 0;
+        Position* position;
         for (auto arg : function->get_args()) {
-            position += 8;
-            if (arg->get_type() == int32Type)
-                initInst.push_back(AsmInstruction(movl, MemoryAddress(position, rbp), getEmptyRegister(arg)));
+            if (i < 6)
+                position = functionArgRegister[i];
             else
-                initInst.push_back(AsmInstruction(movss, MemoryAddress(position, rbp), getEmptyRegister(arg)));
+                position = &MemoryAddress(8 * (i - 6), rbp);
+            if (arg->get_type() == int32Type)
+                initInst.push_back(AsmInstruction(movl, *position, getEmptyRegister(arg)));
+            else
+                initInst.push_back(AsmInstruction(movss, *position, getEmptyRegister(arg)));
         }
         for (auto& block : allBlock)
             block.generate();

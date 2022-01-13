@@ -163,8 +163,12 @@ void AsmBlock::callInstGenerate(Instruction* instruction) {
     int operandNumber = operands.size();
     int i;
 
-    FORDOWN (i, operandNumber - 1, 1)
+    FORDOWN (i, operandNumber - 1, 7)
         appendInst(pushq, getPosition(operands[i]));
+    FORDOWN (i, std::min(operandNumber - 1, 6), 1)
+        if (operands[i]->get_type() == int32Type)
+            appendInst(movl, getPosition(operands[i]), *functionArgRegister[i - 1]);
+    // else
 
     appendInst(call, Position(callFunctionName));
     if (returnType == int32Type) {
@@ -174,7 +178,8 @@ void AsmBlock::callInstGenerate(Instruction* instruction) {
         appendInst(movss, xmm0, getAddress(instruction));
         appendInst(movss, xmm0, getEmptyRegister(instruction));
     }
-    appendInst(addq, ConstInteger(8 * (operandNumber - 1)), rsp);
+    if (operandNumber >= 7)
+        appendInst(addq, ConstInteger(8 * (operandNumber - 7)), rsp);
 }
 
 void AsmBlock::brInstGenerate(Instruction* instruction) {

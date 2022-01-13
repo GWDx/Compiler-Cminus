@@ -38,6 +38,9 @@ public:
 };
 
 Register rbp("rbp"), rsp("rsp"), rip("rip"), eax("eax"), rax("rax"), cl("cl"), xmm0("xmm0");
+Register edi("edi"), esi("esi"), edx("edx"), ecx("ecx"), r8d("r8d"), r9d("r9d");
+
+vector<Register*> functionArgRegister = {&edi, &esi, &edx, &ecx, &r8d, &r9d};
 
 map<Value*, Position*> valueToPosition;
 map<Value*, MemoryAddress*> valueToAddress;
@@ -68,7 +71,7 @@ Module* module;
 
 Register& getIntRegister() {
     int i;
-    FOR (i, 8, 15) {
+    FOR (i, 10, 15) {
         string reg = "r" + to_string(i) + "d";
         if (allRegister[reg] == false) {
             allRegister[reg] = true;

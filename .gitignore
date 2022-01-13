@@ -20,3 +20,6 @@ Current/run.sh
 Current/test
 libcminus_io.a
 Current/learn
+Current/eval/answers
+Current/eval/testcases
+Current/eval/libcminus_io.a
