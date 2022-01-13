@@ -118,7 +118,10 @@ public:
         int position = 8;
         for (auto arg : function->get_args()) {
             position += 8;
-            initInst.push_back(AsmInstruction(movl, MemoryAddress(position, rbp), getEmptyRegister(arg)));
+            if (arg->get_type() == int32Type)
+                initInst.push_back(AsmInstruction(movl, MemoryAddress(position, rbp), getEmptyRegister(arg)));
+            else
+                initInst.push_back(AsmInstruction(movss, MemoryAddress(position, rbp), getEmptyRegister(arg)));
         }
         for (auto& block : allBlock)
             block.generate();

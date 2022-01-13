@@ -49,7 +49,10 @@ void AsmBlock::generate() {
 void AsmBlock::retInstGenerate(Instruction* instruction) {
     if (instruction->get_num_operand()) {
         auto value = instruction->get_operand(0);
-        appendInst(movl, getPosition(value), eax);
+        if (value->get_type() == int32Type)
+            appendInst(movl, getPosition(value), eax);
+        else
+            appendInst(movss, getPosition(value), xmm0);
     }
     appendInst(addq, ConstInteger(asmFunction->stackSpace), rsp);
     appendInst(popq, rbp);
@@ -155,12 +158,14 @@ void AsmBlock::callInstGenerate(Instruction* instruction) {
 
     FORDOWN (i, operandNumber - 1, 1)
         appendInst(pushq, getPosition(operands[i]));
-    if (returnType == voidType)
-        appendInst(call, Position(callFunctionName));
-    else if (returnType == int32Type) {
-        appendInst(call, Position(callFunctionName));
+
+    appendInst(call, Position(callFunctionName));
+    if (returnType == int32Type) {
         appendInst(movl, eax, getAddress(instruction));
         appendInst(movl, eax, getEmptyRegister(instruction));
+    } else if (returnType == floatType) {
+        appendInst(movss, xmm0, getAddress(instruction));
+        appendInst(movss, xmm0, getEmptyRegister(instruction));
     }
     appendInst(addq, ConstInteger(8 * (operandNumber - 1)), rsp);
 }
@@ -179,7 +184,6 @@ void AsmBlock::brInstGenerate(Instruction* instruction) {
         string labelName1 = genLabelName(functionName, basicBlockName1);
         string labelName2 = genLabelName(functionName, basicBlockName2);
 
-        // appendInst(cmpl, valueToRegister[condition]);
         appendInst(cmpl, ConstInteger(0), getPosition(condition));
         appendInst(jne, Position(labelName1));
         appendInst(jmp, Position(labelName2));

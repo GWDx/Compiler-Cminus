@@ -37,7 +37,7 @@ public:
     ConstInteger(int value) { name = "$" + to_string(value); }
 };
 
-Register rbp("rbp"), rsp("rsp"), rip("rip"), eax("eax"), rax("rax"), cl("cl");
+Register rbp("rbp"), rsp("rsp"), rip("rip"), eax("eax"), rax("rax"), cl("cl"), xmm0("xmm0");
 
 map<Value*, Register*> valueToRegister;
 map<Value*, MemoryAddress*> valueToAddress;
