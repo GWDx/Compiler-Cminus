@@ -44,7 +44,8 @@ string addq("addq"), addl("addl"), subl("subl"), subq("subq"), imull("imull"), i
 string addss("addss"), subss("subss"), mulss("mulss"), divss("divss");
 string cvttss2si("cvttss2si"), cvtsi2ssl("cvtsi2ssl");
 string sete("sete"), setne("setne"), setg("setg"), setge("setge"), setl("setl"), setle("setle");
-string cmpl("cmpl"), jmp("jmp"), jne("jne");
+string seta("seta"), setae("setae"), setb("setb"), setbe("setbe");
+string cmpl("cmpl"), ucomiss("ucomiss"), jmp("jmp"), jne("jne");
 string movq("movq"), movl("movl"), movzbl("movzbl"), movss("movss"), cltd("cltd");
 string popq("popq"), pushq("pushq"), retq("retq"), call("call");
 
@@ -72,12 +73,13 @@ public:
     void retInstGenerate(Instruction* instruction);
     void binaryInstGenerate(Instruction* instruction);
     void cmpInstGenerate(Instruction* instruction);
+    void fcmpInstGenerate(Instruction* instruction);
     void zextInstGenerate(Instruction* instruction);
+    void fpToSiInstGenerate(Instruction* instruction);
+    void siToFpInstGenerate(Instruction* instruction);
     void callInstGenerate(Instruction* instruction);
     void brInstGenerate(Instruction* instruction);
     void phiInstGenerate(Instruction* instruction);
-    void fpToSiInstGenerate(Instruction* instruction);
-    void siToFpInstGenerate(Instruction* instruction);
 };
 
 string genLabelName(string functionName, string basicBlockName) {

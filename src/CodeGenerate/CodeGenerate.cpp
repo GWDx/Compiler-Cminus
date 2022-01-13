@@ -5,8 +5,6 @@
 string CodeGenerate::generate() {
     ::module = CodeGenerate::module;
     int i;
-    FOR (i, 8, 15)
-        allRegister[i] = nullptr;
 
     string ansCode;
 
@@ -31,6 +29,8 @@ void AsmBlock::generate() {
             binaryInstGenerate(instruction);
         else if (instruction->is_cmp())
             cmpInstGenerate(instruction);
+        else if (instruction->is_fcmp())
+            fcmpInstGenerate(instruction);
         else if (instruction->is_zext())
             zextInstGenerate(instruction);
         else if (instruction->is_fp2si())
@@ -98,11 +98,34 @@ void AsmBlock::cmpInstGenerate(Instruction* instruction) {
     auto instName = opToName[cmpInstruction->get_cmp_op()];
     auto value1 = instruction->get_operand(0);
     auto value2 = instruction->get_operand(1);
+    auto temp = getIntRegister();
     auto reg = getEmptyRegister(instruction);
 
-    appendInst(movl, getPosition(value1), reg);
-    appendInst(cmpl, getPosition(value2), reg);
+    appendInst(movl, getPosition(value1), temp);
+    appendInst(cmpl, getPosition(value2), temp);
     appendInst(instName, cl);
+    appendInst(movzbl, cl, reg);
+}
+
+void AsmBlock::fcmpInstGenerate(Instruction* instruction) {
+    map<FCmpInst::CmpOp, string> opToName;
+    opToName[FCmpInst::EQ] = sete;  // ? setnp
+    opToName[FCmpInst::NE] = setne;
+    opToName[FCmpInst::GT] = seta;
+    opToName[FCmpInst::GE] = setae;
+    opToName[FCmpInst::LT] = setb;  // ?
+    opToName[FCmpInst::LE] = setbe;
+
+    auto cmpInstruction = dynamic_cast<FCmpInst*>(instruction);
+    auto instName = opToName[cmpInstruction->get_cmp_op()];
+    auto value1 = instruction->get_operand(0);
+    auto value2 = instruction->get_operand(1);
+    auto temp = getFloatRegister();
+    auto reg = getEmptyRegister(instruction);
+
+    appendInst(movss, getPosition(value1), temp);
+    appendInst(ucomiss, getPosition(value2), temp);
+    appendInst(instName, cl);  // ?
     appendInst(movzbl, cl, reg);
 }
 

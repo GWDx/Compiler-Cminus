@@ -41,7 +41,7 @@ Register rbp("rbp"), rsp("rsp"), rip("rip"), eax("eax"), rax("rax"), cl("cl");
 
 map<Value*, Register*> valueToRegister;
 map<Value*, MemoryAddress*> valueToAddress;
-map<int, Value*> allRegister;
+map<string, bool> allRegister;
 
 #define Position(x) *new Position(x)
 #define Register(x) *new Register(x)
@@ -66,25 +66,42 @@ MemoryAddress& getAddress(Value* value) {
 
 Module* module;
 
+Register& getIntRegister() {
+    int i;
+    FOR (i, 8, 15) {
+        string reg = "r" + to_string(i) + "d";
+        if (allRegister[reg] == false) {
+            allRegister[reg] = true;
+            return Register(reg);
+        }
+    }
+    return Register("NoneRegister");
+}
+
+Register& getFloatRegister() {
+    int i;
+    FOR (i, 8, 15) {
+        string reg = "xmm" + to_string(i);
+        if (allRegister[reg] == false) {
+            allRegister[reg] = true;
+            return Register(reg);
+        }
+    }
+    return Register("NoneRegister");
+}
+
 Register& getEmptyRegister(Value* value) {
     int i;
     auto valueType = value->get_type();
-    if (valueType == int32Type)
-        FOR (i, 8, 15)
-            if (allRegister[i] == nullptr) {
-                allRegister[i] = value;
-                Register& ans = Register("r" + to_string(i) + "d");
-                valueToRegister[value] = &ans;
-                return ans;
-            }
-    if (valueType == floatType)
-        FOR (i, 8, 15)
-            if (allRegister[i] == nullptr) {
-                allRegister[i] = value;
-                Register& ans = Register("xmm" + to_string(i));
-                valueToRegister[value] = &ans;
-                return ans;
-            }
+    if (valueType == int32Type or valueType == int1Type) {
+        Register& reg = getIntRegister();
+        valueToRegister[value] = &reg;
+        return reg;
+    } else if (valueType == floatType) {
+        Register& reg = getFloatRegister();
+        valueToRegister[value] = &reg;
+        return reg;
+    }
     return Register("NoneRegister");
 }
 
