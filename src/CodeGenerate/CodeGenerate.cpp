@@ -5,8 +5,11 @@
 string CodeGenerate::generate() {
     ::module = CodeGenerate::module;
     int i;
-
     string ansCode;
+    for (auto globalVar : module->get_global_variable())
+        ansCode += ".comm	" + globalVar->get_name() + ",4,4\n";
+    if (ansCode.size() > 0)
+        ansCode += "\n";
 
     int functionEndNumber = 0;
     for (auto& function : module->get_functions()) {
@@ -43,6 +46,10 @@ void AsmBlock::generate() {
             brInstGenerate(instruction);
         else if (instruction->is_phi())
             phiInstGenerate(instruction);
+        else if (instruction->is_load())
+            loadInstGenerate(instruction);
+        else if (instruction->is_store())
+            storeInstGenerate(instruction);
     }
 }
 
@@ -134,7 +141,7 @@ void AsmBlock::fcmpInstGenerate(Instruction* instruction) {
 
 void AsmBlock::zextInstGenerate(Instruction* instruction) {
     auto rightValue = instruction->get_operand(0);
-    valueToRegister[instruction] = valueToRegister[rightValue];
+    valueToPosition[instruction] = valueToPosition[rightValue];
 }
 
 void AsmBlock::fpToSiInstGenerate(Instruction* instruction) {
@@ -207,4 +214,18 @@ void AsmBlock::phiInstGenerate(Instruction* instruction) {
                 break;
         allInstruction.insert(iter + 1, AsmInstruction(movl, getPosition(value), reg));
     }
+}
+
+void AsmBlock::loadInstGenerate(Instruction* instruction) {
+    auto rightValue = instruction->get_operand(0);
+    valueToPosition[instruction] = &getPosition(rightValue);
+}
+
+void AsmBlock::storeInstGenerate(Instruction* instruction) {
+    auto value = instruction->get_operand(0);
+    auto rightValue = instruction->get_operand(1);
+    if (value->get_type() == int32Type)
+        appendInst(movl, getPosition(value), getPosition(rightValue));
+    else
+        appendInst(movss, getPosition(value), getPosition(rightValue));
 }

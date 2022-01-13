@@ -80,6 +80,8 @@ public:
     void callInstGenerate(Instruction* instruction);
     void brInstGenerate(Instruction* instruction);
     void phiInstGenerate(Instruction* instruction);
+    void loadInstGenerate(Instruction* instruction);
+    void storeInstGenerate(Instruction* instruction);
 };
 
 string genLabelName(string functionName, string basicBlockName) {
@@ -168,6 +170,7 @@ Position& AsmBlock::getPosition(Value* value) {
     Register ans();
     auto constantInt = dynamic_cast<ConstantInt*>(value);
     auto constantFloat = dynamic_cast<ConstantFP*>(value);
+    auto globalVar = dynamic_cast<GlobalVariable*>(value);
 
     if (constantInt)
         return ConstInteger(constantInt->get_value());
@@ -176,8 +179,10 @@ Position& AsmBlock::getPosition(Value* value) {
         string label = asmFunction->appendConst(*(int*)&constantFloatValue);
         return MemoryAddress(label, rip);
     }
-    if (valueToRegister[value])
-        return *valueToRegister[value];
+    if (globalVar)
+        return MemoryAddress(globalVar->get_name(), rip);
+    if (valueToPosition[value])
+        return *valueToPosition[value];
     return Position("NonePosition");
 }
 

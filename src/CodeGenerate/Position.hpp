@@ -39,7 +39,7 @@ public:
 
 Register rbp("rbp"), rsp("rsp"), rip("rip"), eax("eax"), rax("rax"), cl("cl"), xmm0("xmm0");
 
-map<Value*, Register*> valueToRegister;
+map<Value*, Position*> valueToPosition;
 map<Value*, MemoryAddress*> valueToAddress;
 map<string, bool> allRegister;
 
@@ -95,11 +95,11 @@ Register& getEmptyRegister(Value* value) {
     auto valueType = value->get_type();
     if (valueType == int32Type or valueType == int1Type) {
         Register& reg = getIntRegister();
-        valueToRegister[value] = &reg;
+        valueToPosition[value] = &reg;
         return reg;
     } else if (valueType == floatType) {
         Register& reg = getFloatRegister();
-        valueToRegister[value] = &reg;
+        valueToPosition[value] = &reg;
         return reg;
     }
     return Register("NoneRegister");
