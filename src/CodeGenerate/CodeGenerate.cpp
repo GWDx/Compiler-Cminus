@@ -40,8 +40,6 @@ string CodeGenerate::generate() {
 }
 
 void AsmBlock::normalGenerate() {
-    valueToRegister.clear();
-    registerToValue.clear();
     instructionInsertLocation = &normalInstructions;
     for (auto instruction : basicBlock->get_instructions()) {
         if (instruction->isBinary())
@@ -73,16 +71,7 @@ void AsmBlock::normalGenerate() {
         else if (instruction->is_ret() and instruction->get_num_operand())
             getPosition(instruction->get_operand(0));
     }
-    for (auto reg : leastRecentIntRegister) {
-        auto value = registerToValue[reg];
-        if (value)
-            appendInst(movl, *reg, getAddress(value));
-    }
-    for (auto reg : leastRecentFloatRegister) {
-        auto value = registerToValue[reg];
-        if (value)
-            appendInst(movss, *reg, getAddress(value));
-    }
+    stash();
 }
 
 void AsmBlock::endGenerate() {
@@ -229,6 +218,7 @@ void AsmBlock::callInstGenerate(Instruction* instruction) {
         normalInstructions.push_back(*iter);
 
     instructionInsertLocation = &normalInstructions;
+    stash();
     appendInst(call, Position(callFunctionName));
     if (returnType == int32Type) {
         appendInst(movl, eax, getCallAddress(instruction));

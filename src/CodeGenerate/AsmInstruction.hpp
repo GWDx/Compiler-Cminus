@@ -77,6 +77,7 @@ public:
     Position& getPosition(Value* value);
     void normalGenerate();
     void endGenerate();
+    void stash();
 
     void retInstGenerate(Instruction* instruction);
     void binaryInstGenerate(Instruction* instruction);
@@ -121,7 +122,7 @@ int stackSpace = 0;
 class AsmFunction {
 public:
     vector<AsmBlock> allBlock;
-    vector<AsmInstruction> initInst;
+    vector<AsmInstruction> initInst, argMoveInst;
     vector<int> allConstInteger;
     vector<string> allConstLabel;
     Function* function;
@@ -142,15 +143,7 @@ public:
     void generate() {
         int memoryIndex = 0, intRegisterIndex = 0, floatRegisterIndex = 0;
         Position* position;
-        for (auto& block : allBlock)
-            block.normalGenerate();
-
-        stackSpace = (stackSpace / 16 + 1) * 16;
-        instructionInsertLocation = &initInst;
-        appendInst(pushq, rbp);
-        appendInst(movq, rsp, rbp);
-        appendInst(subq, ConstInteger(stackSpace), rsp);
-
+        instructionInsertLocation = &argMoveInst;
         for (auto arg : function->get_args()) {
             MemoryAddress& address = getAddress(arg);
             auto argType = arg->get_type();
@@ -177,6 +170,15 @@ public:
                 }
             }
         }
+        for (auto& block : allBlock)
+            block.normalGenerate();
+
+        stackSpace = (stackSpace / 16 + 1) * 16;
+        instructionInsertLocation = &initInst;
+        appendInst(pushq, rbp);
+        appendInst(movq, rsp, rbp);
+        appendInst(subq, ConstInteger(stackSpace), rsp);
+
         for (auto& block : allBlock)
             block.endGenerate();
         valueToRegister.clear();
@@ -206,6 +208,8 @@ public:
         appendLineTab(".cfi_startproc");
         for (auto instruction : initInst)
             appendLineTab(instruction.print());
+        for (auto instruction : argMoveInst)
+            appendLineTab(instruction.print());
 
         for (auto block : allBlock) {
             appendLine(genLabelName(functionName, block.name) + ":");
@@ -221,6 +225,25 @@ public:
 #undef appendLine
 #undef appendLineTab
 };
+
+void AsmBlock::stash() {
+    for (auto reg : leastRecentIntRegister) {
+        auto value = registerToValue[reg];
+        if (value) {
+            appendInst(movl, *reg, getAddress(value));
+            registerToValue[reg] = nullptr;
+            valueToRegister[value] = nullptr;
+        }
+    }
+    for (auto reg : leastRecentFloatRegister) {
+        auto value = registerToValue[reg];
+        if (value) {
+            appendInst(movss, *reg, getAddress(value));
+            registerToValue[reg] = nullptr;
+            valueToRegister[value] = nullptr;
+        }
+    }
+}
 
 MemoryAddress& getAddress(Value* value) {
     if (valueToAddress[value] == nullptr) {
@@ -272,8 +295,8 @@ Register& getEmptyRegister(Value* value) {
     if (storeValue != nullptr) {
         appendInst(name, *reg, *address);
         valueToRegister[storeValue] = nullptr;
+        appendInst(name, *address, *reg);
     }
-    appendInst(name, *address, *reg);
     valueToRegister[value] = reg;
     registerToValue[reg] = value;
     updateRegister(value);
