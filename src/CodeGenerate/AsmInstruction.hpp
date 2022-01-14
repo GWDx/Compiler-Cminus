@@ -54,7 +54,7 @@ class AsmFunction;
 class AsmBlock {
 public:
     string name;
-    vector<AsmInstruction> allInstruction;
+    list<AsmInstruction> normalInstructions, endInstructions;
     BasicBlock* basicBlock;
     AsmFunction* asmFunction;
 
@@ -63,9 +63,6 @@ public:
         this->basicBlock = basicBlock;
         name = basicBlock->get_name();
     }
-    void appendInst(string name) { allInstruction.push_back(AsmInstruction(name)); }
-    void appendInst(string name, Position& p1) { allInstruction.push_back(AsmInstruction(name, p1)); }
-    void appendInst(string name, Position& p1, Position& p2) { allInstruction.push_back(AsmInstruction(name, p1, p2)); }
 
     Position& getPosition(Value* value);
     void generate();
@@ -82,6 +79,17 @@ public:
     void phiInstGenerate(Instruction* instruction);
     void loadInstGenerate(Instruction* instruction);
     void storeInstGenerate(Instruction* instruction);
+
+    void appendInst(string name) { normalInstructions.push_back(AsmInstruction(name)); }
+    void appendInst(string name, Position& p1) { normalInstructions.push_back(AsmInstruction(name, p1)); }
+    void appendInst(string name, Position& p1, Position& p2) {
+        normalInstructions.push_back(AsmInstruction(name, p1, p2));
+    }
+    void appendEndInst(string name) { endInstructions.push_back(AsmInstruction(name)); }
+    void appendEndInst(string name, Position& p1) { endInstructions.push_back(AsmInstruction(name, p1)); }
+    void appendEndInst(string name, Position& p1, Position& p2) {
+        endInstructions.push_back(AsmInstruction(name, p1, p2));
+    }
 };
 
 string genLabelName(string functionName, string basicBlockName) {
@@ -163,7 +171,9 @@ public:
 
         for (auto block : allBlock) {
             appendLine(genLabelName(functionName, block.name) + ":");
-            for (auto instruction : block.allInstruction)
+            for (auto instruction : block.normalInstructions)
+                appendLineTab(instruction.print());
+            for (auto instruction : block.endInstructions)
                 appendLineTab(instruction.print());
         }
         appendLine(".Lfunc_end" + to_string(functionEndNumber) + ":");

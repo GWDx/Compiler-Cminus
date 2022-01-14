@@ -28,7 +28,7 @@ for directory in allDirectory:
         try:
             os.system(f'../../build/cminusfc {codeFileName} -mem2reg -S -o temp 2>/dev/null')
             os.system('clang temp.s -o temp -L. -lcminus_io 2>/dev/null')
-            result = subprocess.run(['./temp'], input=inputContent, stdout=subprocess.PIPE)
+            result = subprocess.run(['./temp'], input=inputContent, stdout=subprocess.PIPE, timeout=5)
             outputFileContent = result.stdout
             with open(targetOutputFileName, 'rb') as targetOutputFile:
                 targetOutputFileContent = targetOutputFile.read()

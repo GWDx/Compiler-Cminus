@@ -57,13 +57,13 @@ void AsmBlock::retInstGenerate(Instruction* instruction) {
     if (instruction->get_num_operand()) {
         auto value = instruction->get_operand(0);
         if (value->get_type() == int32Type)
-            appendInst(movl, getPosition(value), eax);
+            appendEndInst(movl, getPosition(value), eax);
         else
-            appendInst(movss, getPosition(value), xmm0);
+            appendEndInst(movss, getPosition(value), xmm0);
     }
-    appendInst(addq, ConstInteger(asmFunction->stackSpace), rsp);
-    appendInst(popq, rbp);
-    appendInst(retq);
+    appendEndInst(addq, ConstInteger(asmFunction->stackSpace), rsp);
+    appendEndInst(popq, rbp);
+    appendEndInst(retq);
 }
 
 void AsmBlock::binaryInstGenerate(Instruction* instruction) {
@@ -178,7 +178,7 @@ void AsmBlock::callInstGenerate(Instruction* instruction) {
         }
     }
     for (auto iter = stackInstruction.rbegin(); iter != stackInstruction.rend(); iter++)
-        allInstruction.push_back(*iter);
+        normalInstructions.push_back(*iter);
 
     appendInst(call, Position(callFunctionName));
     if (returnType == int32Type) {
@@ -198,7 +198,7 @@ void AsmBlock::brInstGenerate(Instruction* instruction) {
     if (operands.size() == 1) {
         string basicBlockName = operands[0]->get_name();
         string labelName = genLabelName(functionName, basicBlockName);
-        appendInst(jmp, Position(labelName));
+        appendEndInst(jmp, Position(labelName));
     } else {
         auto condition = operands[0];
         string basicBlockName1 = operands[1]->get_name();
@@ -206,15 +206,14 @@ void AsmBlock::brInstGenerate(Instruction* instruction) {
         string labelName1 = genLabelName(functionName, basicBlockName1);
         string labelName2 = genLabelName(functionName, basicBlockName2);
 
-        appendInst(cmpl, ConstInteger(0), getPosition(condition));
-        appendInst(jne, Position(labelName1));
-        appendInst(jmp, Position(labelName2));
+        appendEndInst(cmpl, ConstInteger(0), getPosition(condition));
+        appendEndInst(jne, Position(labelName1));
+        appendEndInst(jmp, Position(labelName2));
     }
 }
 
 void AsmBlock::phiInstGenerate(Instruction* instruction) {
     int i;
-    vector<AsmInstruction>::iterator iter;
     auto operands = instruction->get_operands();
     auto reg = getEmptyRegister(instruction);
     FOR (i, 0, operands.size() / 2 - 1) {
@@ -222,12 +221,8 @@ void AsmBlock::phiInstGenerate(Instruction* instruction) {
         auto label = operands[2 * i + 1];
         auto basicBlock = static_cast<BasicBlock*>(label);
         auto asmBlock = basicBlockToAsmBlock[basicBlock];
-
-        auto& allInstruction = asmBlock->allInstruction;
-        for (iter = allInstruction.end() - 1; iter >= allInstruction.begin(); iter--)
-            if (iter->name != jmp and iter->name != jne)  //
-                break;
-        allInstruction.insert(iter + 1, AsmInstruction(movl, getPosition(value), reg));
+        auto& endInstructions = asmBlock->endInstructions;
+        endInstructions.insert(endInstructions.begin(), AsmInstruction(movl, getPosition(value), reg));
     }
 }
 
