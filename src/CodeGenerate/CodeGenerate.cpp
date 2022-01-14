@@ -24,11 +24,10 @@ string CodeGenerate::generate() {
     return ansCode;
 }
 
-void AsmBlock::generate() {
+void AsmBlock::normalGenerate() {
+    instructionInsertLocation = &normalInstructions;
     for (auto instruction : basicBlock->get_instructions()) {
-        if (instruction->is_ret())
-            retInstGenerate(instruction);
-        else if (instruction->isBinary())
+        if (instruction->isBinary())
             binaryInstGenerate(instruction);
         else if (instruction->is_cmp())
             cmpInstGenerate(instruction);
@@ -51,19 +50,37 @@ void AsmBlock::generate() {
         else if (instruction->is_store())
             storeInstGenerate(instruction);
     }
+    for (auto reg : leastRecentIntRegister) {
+        auto value = registerToValue[reg];
+        if (value)
+            appendInst(movl, *reg, *valueToAddress[value]);
+    }
+    for (auto reg : leastRecentFloatRegister) {
+        auto value = registerToValue[reg];
+        if (value)
+            appendInst(movss, *reg, *valueToAddress[value]);
+    }
+}
+
+void AsmBlock::endGenerate() {
+    for (auto instruction : basicBlock->get_instructions())
+        if (instruction->is_ret())
+            retInstGenerate(instruction);
 }
 
 void AsmBlock::retInstGenerate(Instruction* instruction) {
+    instructionInsertLocation = &endInstructions;
     if (instruction->get_num_operand()) {
         auto value = instruction->get_operand(0);
         if (value->get_type() == int32Type)
-            appendEndInst(movl, getPosition(value), eax);
+            appendInst(movl, getPosition(value), eax);
         else
-            appendEndInst(movss, getPosition(value), xmm0);
+            appendInst(movss, getPosition(value), xmm0);
     }
-    appendEndInst(addq, ConstInteger(asmFunction->stackSpace), rsp);
-    appendEndInst(popq, rbp);
-    appendEndInst(retq);
+    appendInst(addq, ConstInteger(stackSpace), rsp);
+    appendInst(popq, rbp);
+    appendInst(retq);
+    instructionInsertLocation = &normalInstructions;
 }
 
 void AsmBlock::binaryInstGenerate(Instruction* instruction) {
@@ -108,11 +125,11 @@ void AsmBlock::cmpInstGenerate(Instruction* instruction) {
     auto instName = opToName[cmpInstruction->get_cmp_op()];
     auto value1 = instruction->get_operand(0);
     auto value2 = instruction->get_operand(1);
-    auto temp = getIntRegister();
+    auto tempReg = getEmptyRegister(tempInt);
     auto reg = getEmptyRegister(instruction);
 
-    appendInst(movl, getPosition(value1), temp);
-    appendInst(cmpl, getPosition(value2), temp);
+    appendInst(movl, getPosition(value1), tempReg);
+    appendInst(cmpl, getPosition(value2), tempReg);
     appendInst(instName, cl);
     appendInst(movzbl, cl, reg);
 }
@@ -130,18 +147,18 @@ void AsmBlock::fcmpInstGenerate(Instruction* instruction) {
     auto instName = opToName[cmpInstruction->get_cmp_op()];
     auto value1 = instruction->get_operand(0);
     auto value2 = instruction->get_operand(1);
-    auto temp = getFloatRegister();
+    auto tempReg = getEmptyRegister(tempFloat);
     auto reg = getEmptyRegister(instruction);
 
-    appendInst(movss, getPosition(value1), temp);
-    appendInst(ucomiss, getPosition(value2), temp);
+    appendInst(movss, getPosition(value1), tempReg);
+    appendInst(ucomiss, getPosition(value2), tempReg);
     appendInst(instName, cl);  // ?
     appendInst(movzbl, cl, reg);
 }
 
 void AsmBlock::zextInstGenerate(Instruction* instruction) {
     auto rightValue = instruction->get_operand(0);
-    valueToPosition[instruction] = valueToPosition[rightValue];
+    valueToRegister[instruction] = valueToRegister[rightValue];
 }
 
 void AsmBlock::fpToSiInstGenerate(Instruction* instruction) {
@@ -182,10 +199,10 @@ void AsmBlock::callInstGenerate(Instruction* instruction) {
 
     appendInst(call, Position(callFunctionName));
     if (returnType == int32Type) {
-        appendInst(movl, eax, getAddress(instruction));
+        appendInst(movl, eax, getCallAddress(instruction));
         appendInst(movl, eax, getEmptyRegister(instruction));
     } else if (returnType == floatType) {
-        appendInst(movss, xmm0, getAddress(instruction));
+        appendInst(movss, xmm0, getCallAddress(instruction));
         appendInst(movss, xmm0, getEmptyRegister(instruction));
     }
     if (operandNumber >= 7)
@@ -193,12 +210,13 @@ void AsmBlock::callInstGenerate(Instruction* instruction) {
 }
 
 void AsmBlock::brInstGenerate(Instruction* instruction) {
+    instructionInsertLocation = &endInstructions;
     string functionName = instruction->get_function()->get_name();
     auto operands = instruction->get_operands();
     if (operands.size() == 1) {
         string basicBlockName = operands[0]->get_name();
         string labelName = genLabelName(functionName, basicBlockName);
-        appendEndInst(jmp, Position(labelName));
+        appendInst(jmp, Position(labelName));
     } else {
         auto condition = operands[0];
         string basicBlockName1 = operands[1]->get_name();
@@ -206,10 +224,11 @@ void AsmBlock::brInstGenerate(Instruction* instruction) {
         string labelName1 = genLabelName(functionName, basicBlockName1);
         string labelName2 = genLabelName(functionName, basicBlockName2);
 
-        appendEndInst(cmpl, ConstInteger(0), getPosition(condition));
-        appendEndInst(jne, Position(labelName1));
-        appendEndInst(jmp, Position(labelName2));
+        appendInst(cmpl, ConstInteger(0), getPosition(condition));
+        appendInst(jne, Position(labelName1));
+        appendInst(jmp, Position(labelName2));
     }
+    instructionInsertLocation = &normalInstructions;
 }
 
 void AsmBlock::phiInstGenerate(Instruction* instruction) {
@@ -228,7 +247,7 @@ void AsmBlock::phiInstGenerate(Instruction* instruction) {
 
 void AsmBlock::loadInstGenerate(Instruction* instruction) {
     auto rightValue = instruction->get_operand(0);
-    valueToPosition[instruction] = &getPosition(rightValue);
+    // valueToRegister[instruction] = &getPosition(rightValue);
 }
 
 void AsmBlock::storeInstGenerate(Instruction* instruction) {

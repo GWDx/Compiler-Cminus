@@ -1,6 +1,7 @@
 #ifndef POSITION_HPP
 #define POSITION_HPP
 
+#include <algorithm>
 #include "CodeGenerate.hpp"
 
 #define FOR(i, l, r) for (i = l; i <= (int)r; i++)
@@ -40,12 +41,16 @@ public:
 
 Register rbp("rbp"), rsp("rsp"), rip("rip"), eax("eax"), rax("rax"), cl("cl");
 Register edi("edi"), esi("esi"), edx("edx"), ecx("ecx"), r8d("r8d"), r9d("r9d");
+Register r10d("r10d"), r11d("r11d"), r12d("r12d"), r13d("r13d"), r14d("r14d"), r15d("r15d");
 Register xmm0("xmm0"), xmm1("xmm1"), xmm2("xmm2"), xmm3("xmm3"), xmm4("xmm4"), xmm5("xmm5"), xmm6("xmm6"), xmm7("xmm7");
+Register xmm8("xmm8"), xmm9("xmm9"), xmm10("xmm10"), xmm11("xmm11"), xmm12("xmm12"), xmm13("xmm13"), xmm14("xmm14"),
+    xmm15("xmm15");
 
 vector<Register*> argIntRegister = {&edi, &esi, &edx, &ecx, &r8d, &r9d};
 vector<Register*> argFloatRegister = {&xmm0, &xmm1, &xmm2, &xmm3, &xmm4, &xmm5, &xmm6, &xmm7};
 
-map<Value*, Position*> valueToPosition;
+map<Register*, Value*> registerToValue;
+map<Value*, Register*> valueToRegister;
 map<Value*, MemoryAddress*> valueToAddress;
 map<string, bool> allRegister;
 
@@ -54,7 +59,7 @@ map<string, bool> allRegister;
 #define MemoryAddress(x, y) *new MemoryAddress(x, y)
 #define ConstInteger(x) *new ConstInteger(x)
 
-MemoryAddress& getAddress(Value* value) {
+MemoryAddress& getCallAddress(Value* value) {
     static int top = 0;
     if (valueToAddress.count(value) == 0) {
         top += 4;
@@ -72,43 +77,24 @@ MemoryAddress& getAddress(Value* value) {
 
 Module* module;
 
-Register& getIntRegister() {
-    int i;
-    FOR (i, 10, 15) {
-        string reg = "r" + to_string(i) + "d";
-        if (allRegister[reg] == false) {
-            allRegister[reg] = true;
-            return Register(reg);
-        }
-    }
-    return Register("NoneRegister");
-}
+vector<Register*> leastRecentIntRegister = {&r10d, &r11d, &r12d, &r13d, &r14d, &r15d};
+vector<Register*> leastRecentFloatRegister = {&xmm8, &xmm9, &xmm10, &xmm11, &xmm12, &xmm13, &xmm14, &xmm15};
 
-Register& getFloatRegister() {
-    int i;
-    FOR (i, 8, 15) {
-        string reg = "xmm" + to_string(i);
-        if (allRegister[reg] == false) {
-            allRegister[reg] = true;
-            return Register(reg);
-        }
-    }
-    return Register("NoneRegister");
-}
-
-Register& getEmptyRegister(Value* value) {
-    int i;
+void updateRegister(Value* value) {
     auto valueType = value->get_type();
-    if (valueType == int32Type or valueType == int1Type) {
-        Register& reg = getIntRegister();
-        valueToPosition[value] = &reg;
-        return reg;
-    } else if (valueType == floatType) {
-        Register& reg = getFloatRegister();
-        valueToPosition[value] = &reg;
-        return reg;
-    }
-    return Register("NoneRegister");
+    Register* reg = valueToRegister[value];
+    vector<Register*>* leastRecentRegister;
+    if (valueType == int32Type or valueType == int1Type)
+        leastRecentRegister = &leastRecentIntRegister;
+    else if (valueType == floatType)
+        leastRecentRegister = &leastRecentFloatRegister;
+    auto location = std::find(leastRecentRegister->begin(), leastRecentRegister->end(), reg);
+    if (location == leastRecentRegister->end())
+        return;
+    leastRecentRegister->erase(location);
+    leastRecentRegister->push_back(reg);
 }
+
+Register& getEmptyRegister(Value* value);
 
 #endif
