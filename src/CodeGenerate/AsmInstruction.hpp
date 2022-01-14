@@ -135,23 +135,24 @@ public:
             Register& reg = getEmptyRegister(arg);
             if (arg->get_type() == int32Type) {
                 if (intRegisterIndex < argIntRegister.size())
-                    initInst.push_back(AsmInstruction(movl, *argIntRegister[intRegisterIndex++], reg));
+                    appendInst(movl, *argIntRegister[intRegisterIndex++], reg);
                 else
-                    initInst.push_back(AsmInstruction(movl, MemoryAddress(8 * memoryIndex++, rbp), reg));
+                    appendInst(movl, MemoryAddress(8 * memoryIndex++, rbp), reg);
             } else {
                 if (floatRegisterIndex < argFloatRegister.size())
-                    initInst.push_back(AsmInstruction(movss, *argFloatRegister[floatRegisterIndex++], reg));
+                    appendInst(movss, *argFloatRegister[floatRegisterIndex++], reg);
                 else
-                    initInst.push_back(AsmInstruction(movss, MemoryAddress(8 * memoryIndex++, rbp), reg));
+                    appendInst(movss, MemoryAddress(8 * memoryIndex++, rbp), reg);
             }
         }
         for (auto& block : allBlock)
             block.normalGenerate();
 
         stackSpace = (stackSpace / 16 + 1) * 16;
-        initInst.push_back(AsmInstruction(pushq, rbp));
-        initInst.push_back(AsmInstruction(movq, rsp, rbp));
-        initInst.push_back(AsmInstruction(subq, ConstInteger(stackSpace), rsp));
+        instructionInsertLocation = &initInst;
+        appendInst(pushq, rbp);
+        appendInst(movq, rsp, rbp);
+        appendInst(subq, ConstInteger(stackSpace), rsp);
 
         for (auto& block : allBlock)
             block.endGenerate();

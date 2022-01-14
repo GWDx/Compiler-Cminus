@@ -53,12 +53,12 @@ void AsmBlock::normalGenerate() {
     for (auto reg : leastRecentIntRegister) {
         auto value = registerToValue[reg];
         if (value)
-            appendInst(movl, *reg, *valueToAddress[value]);
+            appendInst(movl, *reg, getAddress(value));
     }
     for (auto reg : leastRecentFloatRegister) {
         auto value = registerToValue[reg];
         if (value)
-            appendInst(movss, *reg, *valueToAddress[value]);
+            appendInst(movss, *reg, getAddress(value));
     }
 }
 
@@ -158,7 +158,10 @@ void AsmBlock::fcmpInstGenerate(Instruction* instruction) {
 
 void AsmBlock::zextInstGenerate(Instruction* instruction) {
     auto rightValue = instruction->get_operand(0);
-    valueToRegister[instruction] = valueToRegister[rightValue];
+    auto reg = valueToRegister[rightValue];
+    valueToRegister[instruction] = reg;
+    registerToValue[reg] = instruction;
+    valueToAddress[instruction] = valueToAddress[rightValue];
 }
 
 void AsmBlock::fpToSiInstGenerate(Instruction* instruction) {
@@ -234,20 +237,20 @@ void AsmBlock::brInstGenerate(Instruction* instruction) {
 void AsmBlock::phiInstGenerate(Instruction* instruction) {
     int i;
     auto operands = instruction->get_operands();
-    auto reg = getEmptyRegister(instruction);
     FOR (i, 0, operands.size() / 2 - 1) {
         auto value = operands[2 * i];
         auto label = operands[2 * i + 1];
         auto basicBlock = static_cast<BasicBlock*>(label);
         auto asmBlock = basicBlockToAsmBlock[basicBlock];
         auto& endInstructions = asmBlock->endInstructions;
-        endInstructions.insert(endInstructions.begin(), AsmInstruction(movl, getPosition(value), reg));
+        endInstructions.insert(endInstructions.begin(), AsmInstruction(movl, eax, getAddress(instruction)));
+        endInstructions.insert(endInstructions.begin(), AsmInstruction(movl, getPosition(value), eax));
     }
 }
 
 void AsmBlock::loadInstGenerate(Instruction* instruction) {
     auto rightValue = instruction->get_operand(0);
-    // valueToRegister[instruction] = &getPosition(rightValue);
+    // valueToRegister[instruction] = &getEmptyRegister(rightValue);
 }
 
 void AsmBlock::storeInstGenerate(Instruction* instruction) {
