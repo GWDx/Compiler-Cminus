@@ -7,12 +7,13 @@
 using std::string;
 using std::vector;
 
+map<string, string> reg32To64;
+
 string to64RegForm(string reg, string name) {
-    if (name == "movq" or name == "addq" or name == "leaq") {
-        int last = reg.length() - 1;
-        if (reg[last] == 'd')
-            return reg.erase(last);
-    }
+    int i;
+    if (name == "movq" or name == "addq" or name == "leaq")
+        if (reg32To64[reg] != "")
+            return reg32To64[reg];
     return reg;
 }
 
@@ -141,21 +142,6 @@ public:
     void generate() {
         int memoryIndex = 0, intRegisterIndex = 0, floatRegisterIndex = 0;
         Position* position;
-        for (auto arg : function->get_args()) {
-            instructionInsertLocation = &initInst;
-            Register& reg = getEmptyRegister(arg);
-            if (arg->get_type() == int32Type) {
-                if (intRegisterIndex < argIntRegister.size())
-                    appendInst(movl, *argIntRegister[intRegisterIndex++], reg);
-                else
-                    appendInst(movl, MemoryAddress(8 * memoryIndex++, rbp), reg);
-            } else {
-                if (floatRegisterIndex < argFloatRegister.size())
-                    appendInst(movss, *argFloatRegister[floatRegisterIndex++], reg);
-                else
-                    appendInst(movss, MemoryAddress(8 * memoryIndex++, rbp), reg);
-            }
-        }
         for (auto& block : allBlock)
             block.normalGenerate();
 
@@ -165,8 +151,36 @@ public:
         appendInst(movq, rsp, rbp);
         appendInst(subq, ConstInteger(stackSpace), rsp);
 
+        for (auto arg : function->get_args()) {
+            MemoryAddress& address = getAddress(arg);
+            auto argType = arg->get_type();
+            if (argType == int32Type) {
+                if (intRegisterIndex < argIntRegister.size())
+                    appendInst(movl, *argIntRegister[intRegisterIndex++], address);
+                else {
+                    appendInst(movl, MemoryAddress(8 * memoryIndex++, rbp), eax);
+                    appendInst(movl, eax, address);
+                }
+            } else if (argType == floatType) {
+                if (floatRegisterIndex < argFloatRegister.size())
+                    appendInst(movss, *argFloatRegister[floatRegisterIndex++], address);
+                else {
+                    appendInst(movss, MemoryAddress(8 * memoryIndex++, rbp), xmm0);
+                    appendInst(movss, xmm0, address);
+                }
+            } else {
+                if (intRegisterIndex < argIntRegister.size())
+                    appendInst(movq, *argIntRegister[intRegisterIndex++], address);
+                else {
+                    appendInst(movq, MemoryAddress(8 * memoryIndex++, rbp), rax);
+                    appendInst(movq, rax, address);
+                }
+            }
+        }
         for (auto& block : allBlock)
             block.endGenerate();
+        valueToRegister.clear();
+        registerToValue.clear();
     }
 
     string appendConst(int value) {

@@ -94,6 +94,7 @@ void updateRegister(Value* value) {
     leastRecentRegister->push_back(reg);
 }
 
+MemoryAddress& getAddress(Value* value);
 Register& getEmptyRegister(Value* value);
 
 #endif

@@ -5,6 +5,13 @@
 string CodeGenerate::generate() {
     ::module = CodeGenerate::module;
     int i;
+    FOR (i, 8, 15)
+        reg32To64["%r" + to_string(i) + "d"] = "%r" + to_string(i);
+    reg32To64["%edi"] = "%rdi";
+    reg32To64["%esi"] = "%rsi";
+    reg32To64["%edx"] = "%rdx";
+    reg32To64["%ecx"] = "%rcx";
+
     string ansCode;
     for (auto globalVar : module->get_global_variable()) {
         string name = globalVar->get_name();
@@ -33,6 +40,8 @@ string CodeGenerate::generate() {
 }
 
 void AsmBlock::normalGenerate() {
+    valueToRegister.clear();
+    registerToValue.clear();
     instructionInsertLocation = &normalInstructions;
     for (auto instruction : basicBlock->get_instructions()) {
         if (instruction->isBinary())
@@ -195,23 +204,31 @@ void AsmBlock::callInstGenerate(Instruction* instruction) {
     int operandNumber = operands.size();
     int i, intRegisterIndex = 0, floatRegisterIndex = 0;
     vector<AsmInstruction> stackInstruction;
+    instructionInsertLocation = &stackInstruction;
     FOR (i, 1, operandNumber - 1) {
         Position& position = getPosition(operands[i]);
-        if (operands[i]->get_type() == int32Type) {
+        auto type = operands[i]->get_type();
+        if (type == int32Type) {
             if (intRegisterIndex < argIntRegister.size())
-                stackInstruction.push_back(AsmInstruction(movl, position, *argIntRegister[intRegisterIndex++]));
+                appendInst(movl, position, *argIntRegister[intRegisterIndex++]);
             else
-                stackInstruction.push_back(AsmInstruction(pushq, position));
-        } else {
+                appendInst(pushq, position);
+        } else if (type == floatType) {
             if (floatRegisterIndex < argFloatRegister.size())
-                stackInstruction.push_back(AsmInstruction(movss, position, *argFloatRegister[floatRegisterIndex++]));
+                appendInst(movss, position, *argFloatRegister[floatRegisterIndex++]);
             else
-                stackInstruction.push_back(AsmInstruction(pushq, position));  // ?
+                appendInst(pushq, position);  // ?
+        } else {
+            if (intRegisterIndex < argIntRegister.size())
+                appendInst(movq, position, *argIntRegister[intRegisterIndex++]);
+            else
+                appendInst(pushq, position);
         }
     }
     for (auto iter = stackInstruction.rbegin(); iter != stackInstruction.rend(); iter++)
         normalInstructions.push_back(*iter);
 
+    instructionInsertLocation = &normalInstructions;
     appendInst(call, Position(callFunctionName));
     if (returnType == int32Type) {
         appendInst(movl, eax, getCallAddress(instruction));
@@ -303,12 +320,16 @@ void AsmBlock::gepInstGenerate(Instruction* instruction) {
     auto operands = instruction->get_operands();
     auto pointer = operands[0];
     auto& reg = getEmptyRegister(instruction);
-    appendInst(leaq, getPosition(pointer), reg);
+    Value* index;
     if (operands.size() == 3) {
-        auto index = operands[2];
-        auto& offsetReg = getEmptyRegister(tempInt);
-        appendInst(movl, getPosition(index), offsetReg);
-        appendInst(imull, ConstInteger(4), offsetReg);
-        appendInst(addq, offsetReg, reg);
+        index = operands[2];
+        appendInst(leaq, getAddress(pointer), reg);
+    } else {
+        index = operands[1];
+        appendInst(movq, getAddress(pointer), reg);
     }
+    auto& offsetReg = getEmptyRegister(tempInt);
+    appendInst(movl, getPosition(index), offsetReg);
+    appendInst(imull, ConstInteger(4), offsetReg);
+    appendInst(addq, offsetReg, reg);
 }
