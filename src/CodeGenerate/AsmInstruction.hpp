@@ -7,6 +7,13 @@
 using std::string;
 using std::vector;
 
+string to64RegForm(string reg) {
+    int last = reg.length() - 1;
+    if (reg[last] == 'd')
+        return reg.erase(last);
+    return reg;
+}
+
 class AsmInstruction {
 public:
     string name;
@@ -19,9 +26,16 @@ public:
         if (name.length() < 4)
             ans += "\t";
         if (size > 0) {
-            FOR (i, 0, size - 2)
-                ans += positions[i].name + ", ";
-            ans += positions[size - 1].name;
+            FOR (i, 0, size - 2) {
+                if (name == "movq")
+                    ans += to64RegForm(positions[i].name) + ", ";
+                else
+                    ans += positions[i].name + ", ";
+            }
+            if (name == "movq")
+                ans += to64RegForm(positions[size - 1].name);
+            else
+                ans += positions[size - 1].name;
         }
         return ans;
     }
@@ -46,7 +60,7 @@ string cvttss2si("cvttss2si"), cvtsi2ssl("cvtsi2ssl");
 string sete("sete"), setne("setne"), setg("setg"), setge("setge"), setl("setl"), setle("setle");
 string seta("seta"), setae("setae"), setb("setb"), setbe("setbe");
 string cmpl("cmpl"), ucomiss("ucomiss"), jmp("jmp"), jne("jne");
-string movq("movq"), movl("movl"), movzbl("movzbl"), movss("movss"), cltd("cltd");
+string movq("movq"), movl("movl"), movzbl("movzbl"), movss("movss"), cltd("cltd"), leaq("leaq");
 string popq("popq"), pushq("pushq"), retq("retq"), call("call");
 
 class AsmFunction;
@@ -80,6 +94,8 @@ public:
     void phiInstGenerate(Instruction* instruction);
     void loadInstGenerate(Instruction* instruction);
     void storeInstGenerate(Instruction* instruction);
+    void allocaInstGenerate(Instruction* instruction);
+    void gepInstGenerate(Instruction* instruction);
 
 private:
     Value* tempInt = ConstantInt::get(0, module);
@@ -199,7 +215,10 @@ public:
 
 MemoryAddress& getAddress(Value* value) {
     if (valueToAddress[value] == nullptr) {
-        stackSpace += 8;
+        if (value->get_type()->get_type_id() == Type::TypeID::PointerTyID)
+            stackSpace = (stackSpace / 8 + 2) * 8;
+        else
+            stackSpace += 4;
         valueToAddress[value] = &MemoryAddress(-stackSpace, rbp);
     }
     return *valueToAddress[value];
@@ -209,7 +228,6 @@ Position& AsmBlock::getPosition(Value* value) {
     Register ans();
     auto constantInt = dynamic_cast<ConstantInt*>(value);
     auto constantFloat = dynamic_cast<ConstantFP*>(value);
-    auto globalVar = dynamic_cast<GlobalVariable*>(value);
     if (value == tempInt)
         value = tempInt;
     if (constantInt and value != tempInt)
@@ -219,8 +237,6 @@ Position& AsmBlock::getPosition(Value* value) {
         string label = asmFunction->appendConst(*(int*)&constantFloatValue);
         return MemoryAddress(label, rip);
     }
-    if (globalVar)
-        return MemoryAddress(globalVar->get_name(), rip);
     if (valueToRegister[value]) {
         updateRegister(value);
         return *valueToRegister[value];
@@ -238,6 +254,9 @@ Register& getEmptyRegister(Value* value) {
     } else if (valueType == floatType) {
         reg = leastRecentFloatRegister[0];
         name = movss;
+    } else if (value->get_type()->get_type_id() == Type::TypeID::PointerTyID) {
+        reg = leastRecentIntRegister[0];
+        name = movq;
     }
     auto storeValue = registerToValue[reg];
     auto address = &getAddress(value);

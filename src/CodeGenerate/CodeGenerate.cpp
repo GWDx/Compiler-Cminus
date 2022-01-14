@@ -6,8 +6,11 @@ string CodeGenerate::generate() {
     ::module = CodeGenerate::module;
     int i;
     string ansCode;
-    for (auto globalVar : module->get_global_variable())
-        ansCode += ".comm	" + globalVar->get_name() + ",4,4\n";
+    for (auto globalVar : module->get_global_variable()) {
+        string name = globalVar->get_name();
+        ansCode += ".comm	" + name + ",4,4\n";
+        globalStringToAddress[name] = &MemoryAddress(globalVar->get_name(), rip);
+    }
     if (ansCode.size() > 0)
         ansCode += "\n";
 
@@ -49,6 +52,12 @@ void AsmBlock::normalGenerate() {
             loadInstGenerate(instruction);
         else if (instruction->is_store())
             storeInstGenerate(instruction);
+        else if (instruction->is_alloca())
+            allocaInstGenerate(instruction);
+        else if (instruction->is_gep())
+            gepInstGenerate(instruction);
+        else if (instruction->is_ret() and instruction->get_num_operand())
+            getPosition(instruction->get_operand(0));
     }
     for (auto reg : leastRecentIntRegister) {
         auto value = registerToValue[reg];
@@ -158,9 +167,7 @@ void AsmBlock::fcmpInstGenerate(Instruction* instruction) {
 
 void AsmBlock::zextInstGenerate(Instruction* instruction) {
     auto rightValue = instruction->get_operand(0);
-    auto reg = valueToRegister[rightValue];
-    valueToRegister[instruction] = reg;
-    registerToValue[reg] = instruction;
+    valueToRegister[instruction] = valueToRegister[rightValue];
     valueToAddress[instruction] = valueToAddress[rightValue];
 }
 
@@ -250,14 +257,37 @@ void AsmBlock::phiInstGenerate(Instruction* instruction) {
 
 void AsmBlock::loadInstGenerate(Instruction* instruction) {
     auto rightValue = instruction->get_operand(0);
-    // valueToRegister[instruction] = &getEmptyRegister(rightValue);
+    auto type = rightValue->get_type();
+    auto name = rightValue->get_name();
+    if (type->get_pointer_element_type()->get_type_id() == Type::ArrayTyID) {
+        // appendInst(movq, *globalStringToAddress[name], rax);
+        // appendInst(movq, MemoryAddress(0, rax), reg);
+    } else {
+        auto reg = getEmptyRegister(instruction);
+        appendInst(movl, *globalStringToAddress[name], reg);
+    }
 }
 
 void AsmBlock::storeInstGenerate(Instruction* instruction) {
     auto value = instruction->get_operand(0);
     auto rightValue = instruction->get_operand(1);
-    if (value->get_type() == int32Type)
-        appendInst(movl, getPosition(value), getPosition(rightValue));
-    else
-        appendInst(movss, getPosition(value), getPosition(rightValue));
+    auto type = rightValue->get_type();
+    auto name = rightValue->get_name();
+    if (type->get_pointer_element_type()->get_type_id() == Type::ArrayTyID) {
+    } else {
+        appendInst(movl, getPosition(value), *globalStringToAddress[name]);
+    }
 }
+
+void AsmBlock::allocaInstGenerate(Instruction* instruction) {
+    auto allocaInst = dynamic_cast<AllocaInst*>(instruction);
+    auto allocaType = allocaInst->get_alloca_type();
+    getAddress(instruction);
+    if (allocaType->get_type_id() == Type::ArrayTyID) {
+        auto arrayType = static_cast<ArrayType*>(allocaType);
+        int nums = arrayType->get_num_of_elements();
+        stackSpace += nums * 4;
+    }
+}
+
+void AsmBlock::gepInstGenerate(Instruction* instruction) {}
