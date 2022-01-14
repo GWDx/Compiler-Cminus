@@ -7,10 +7,12 @@
 using std::string;
 using std::vector;
 
-string to64RegForm(string reg) {
-    int last = reg.length() - 1;
-    if (reg[last] == 'd')
-        return reg.erase(last);
+string to64RegForm(string reg, string name) {
+    if (name == "movq" or name == "addq" or name == "leaq") {
+        int last = reg.length() - 1;
+        if (reg[last] == 'd')
+            return reg.erase(last);
+    }
     return reg;
 }
 
@@ -26,16 +28,9 @@ public:
         if (name.length() < 4)
             ans += "\t";
         if (size > 0) {
-            FOR (i, 0, size - 2) {
-                if (name == "movq")
-                    ans += to64RegForm(positions[i].name) + ", ";
-                else
-                    ans += positions[i].name + ", ";
-            }
-            if (name == "movq")
-                ans += to64RegForm(positions[size - 1].name);
-            else
-                ans += positions[size - 1].name;
+            FOR (i, 0, size - 2)
+                ans += to64RegForm(positions[i].name, name) + ", ";
+            ans += to64RegForm(positions[size - 1].name, name);
         }
         return ans;
     }

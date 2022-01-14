@@ -84,7 +84,7 @@ void updateRegister(Value* value) {
     auto valueType = value->get_type();
     Register* reg = valueToRegister[value];
     vector<Register*>* leastRecentRegister;
-    if (valueType == int32Type or valueType == int1Type)
+    if (valueType == int32Type or valueType == int1Type or valueType->get_type_id() == Type::TypeID::PointerTyID)
         leastRecentRegister = &leastRecentIntRegister;
     else if (valueType == floatType)
         leastRecentRegister = &leastRecentFloatRegister;

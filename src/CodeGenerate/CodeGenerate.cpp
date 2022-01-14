@@ -259,23 +259,25 @@ void AsmBlock::loadInstGenerate(Instruction* instruction) {
     auto rightValue = instruction->get_operand(0);
     auto type = rightValue->get_type();
     auto name = rightValue->get_name();
-    if (type->get_pointer_element_type()->get_type_id() == Type::ArrayTyID) {
-        // appendInst(movq, *globalStringToAddress[name], rax);
-        // appendInst(movq, MemoryAddress(0, rax), reg);
-    } else {
-        auto reg = getEmptyRegister(instruction);
+    auto reg = getEmptyRegister(instruction);
+    if (globalStringToAddress[name])
         appendInst(movl, *globalStringToAddress[name], reg);
+    else {
+        appendInst(movq, getPosition(rightValue), rax);
+        appendInst(movq, MemoryAddress(0, rax), reg);
     }
 }
 
 void AsmBlock::storeInstGenerate(Instruction* instruction) {
     auto value = instruction->get_operand(0);
-    auto rightValue = instruction->get_operand(1);
-    auto type = rightValue->get_type();
-    auto name = rightValue->get_name();
-    if (type->get_pointer_element_type()->get_type_id() == Type::ArrayTyID) {
-    } else {
+    auto targetValue = instruction->get_operand(1);
+    auto type = targetValue->get_type();
+    auto name = targetValue->get_name();
+    if (globalStringToAddress[name])
         appendInst(movl, getPosition(value), *globalStringToAddress[name]);
+    else {
+        appendInst(movq, getPosition(targetValue), rax);
+        appendInst(movl, getPosition(value), MemoryAddress(0, rax));
     }
 }
 
@@ -290,4 +292,16 @@ void AsmBlock::allocaInstGenerate(Instruction* instruction) {
     }
 }
 
-void AsmBlock::gepInstGenerate(Instruction* instruction) {}
+void AsmBlock::gepInstGenerate(Instruction* instruction) {
+    auto operands = instruction->get_operands();
+    auto pointer = operands[0];
+    auto& reg = getEmptyRegister(instruction);
+    appendInst(leaq, getPosition(pointer), reg);
+    if (operands.size() == 3) {
+        auto index = operands[2];
+        auto& offsetReg = getEmptyRegister(tempInt);
+        appendInst(movl, getPosition(index), offsetReg);
+        appendInst(imull, ConstInteger(4), offsetReg);
+        appendInst(addq, offsetReg, reg);
+    }
+}
