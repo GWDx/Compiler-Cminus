@@ -8,8 +8,13 @@ string CodeGenerate::generate() {
     string ansCode;
     for (auto globalVar : module->get_global_variable()) {
         string name = globalVar->get_name();
-        ansCode += ".comm	" + name + ",4,4\n";
-        globalStringToAddress[name] = &MemoryAddress(globalVar->get_name(), rip);
+        int size = 4;
+        if (globalVar->get_type()->get_type_id() == Type::PointerTyID) {
+            auto pointType = globalVar->get_type()->get_pointer_element_type();
+            auto arrayType = static_cast<ArrayType*>(pointType);
+            size = 4 * arrayType->get_num_of_elements();
+        }
+        ansCode += ".comm	" + name + "," + to_string(size) + ",4\n";
     }
     if (ansCode.size() > 0)
         ansCode += "\n";
@@ -260,25 +265,27 @@ void AsmBlock::loadInstGenerate(Instruction* instruction) {
     auto type = rightValue->get_type();
     auto name = rightValue->get_name();
     auto reg = getEmptyRegister(instruction);
-    if (globalStringToAddress[name])
-        appendInst(movl, *globalStringToAddress[name], reg);
-    else {
-        appendInst(movq, getPosition(rightValue), rax);
-        appendInst(movq, MemoryAddress(0, rax), reg);
-    }
+    appendInst(movq, getPosition(rightValue), rax);
+    appendInst(movq, MemoryAddress(0, rax), reg);
 }
 
 void AsmBlock::storeInstGenerate(Instruction* instruction) {
     auto value = instruction->get_operand(0);
     auto targetValue = instruction->get_operand(1);
-    auto type = targetValue->get_type();
+    auto type = targetValue->get_type()->get_pointer_element_type();
     auto name = targetValue->get_name();
-    if (globalStringToAddress[name])
-        appendInst(movl, getPosition(value), *globalStringToAddress[name]);
-    else {
-        appendInst(movq, getPosition(targetValue), rax);
-        appendInst(movl, getPosition(value), MemoryAddress(0, rax));
+    string moveName;
+    Register* reg;
+    if (type == int32Type) {
+        moveName = movl;
+        reg = &getEmptyRegister(tempInt);
+    } else {
+        moveName = movss;
+        reg = &getEmptyRegister(tempFloat);
     }
+    appendInst(movq, getPosition(targetValue), rax);
+    appendInst(moveName, getPosition(value), *reg);
+    appendInst(moveName, *reg, MemoryAddress(0, rax));
 }
 
 void AsmBlock::allocaInstGenerate(Instruction* instruction) {

@@ -52,7 +52,6 @@ vector<Register*> argFloatRegister = {&xmm0, &xmm1, &xmm2, &xmm3, &xmm4, &xmm5, 
 map<Register*, Value*> registerToValue;
 map<Value*, Register*> valueToRegister;
 map<Value*, MemoryAddress*> valueToAddress;
-map<string, MemoryAddress*> globalStringToAddress;
 
 #define Position(x) *new Position(x)
 #define Register(x) *new Register(x)
