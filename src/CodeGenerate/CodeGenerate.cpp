@@ -298,12 +298,12 @@ void AsmBlock::storeInstGenerate(Instruction* instruction) {
 void AsmBlock::allocaInstGenerate(Instruction* instruction) {
     auto allocaInst = dynamic_cast<AllocaInst*>(instruction);
     auto allocaType = allocaInst->get_alloca_type();
-    getAddress(instruction);
     if (allocaType->get_type_id() == Type::ArrayTyID) {
         auto arrayType = static_cast<ArrayType*>(allocaType);
         int nums = arrayType->get_num_of_elements();
         stackSpace += nums * 4;
     }
+    getAddress(instruction);
 }
 
 void AsmBlock::gepInstGenerate(Instruction* instruction) {

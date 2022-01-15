@@ -11,7 +11,7 @@ map<string, string> reg32To64;
 
 string to64RegForm(string reg, string name) {
     int i;
-    if (name == "movq" or name == "addq" or name == "leaq")
+    if (name == "movq" or name == "addq" or name == "subq" or name == "leaq")
         if (reg32To64[reg] != "")
             return reg32To64[reg];
     return reg;
@@ -247,7 +247,7 @@ void AsmBlock::stash() {
 
 MemoryAddress& getAddress(Value* value) {
     if (valueToAddress[value] == nullptr) {
-        if (value->get_type()->get_type_id() == Type::TypeID::PointerTyID)
+        if (value->get_type()->get_type_id() == Type::PointerTyID)
             stackSpace = (stackSpace / 8 + 2) * 8;
         else
             stackSpace += 4;
@@ -286,7 +286,7 @@ Register& getEmptyRegister(Value* value) {
     } else if (valueType == floatType) {
         reg = leastRecentFloatRegister[0];
         name = movss;
-    } else if (value->get_type()->get_type_id() == Type::TypeID::PointerTyID) {
+    } else if (value->get_type()->get_type_id() == Type::PointerTyID) {
         reg = leastRecentIntRegister[0];
         name = movq;
     }
@@ -295,8 +295,8 @@ Register& getEmptyRegister(Value* value) {
     if (storeValue != nullptr) {
         appendInst(name, *reg, *address);
         valueToRegister[storeValue] = nullptr;
-        appendInst(name, *address, *reg);
     }
+    appendInst(name, *address, *reg);
     valueToRegister[value] = reg;
     registerToValue[reg] = value;
     updateRegister(value);
