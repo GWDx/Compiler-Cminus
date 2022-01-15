@@ -16,12 +16,13 @@ string CodeGenerate::generate() {
     for (auto globalVar : module->get_global_variable()) {
         string name = globalVar->get_name();
         int size = 4;
-        if (globalVar->get_type()->get_type_id() == Type::PointerTyID) {
+        if (globalVar->get_type()->get_pointer_element_type()->get_type_id() == Type::ArrayTyID) {
             auto pointType = globalVar->get_type()->get_pointer_element_type();
             auto arrayType = static_cast<ArrayType*>(pointType);
             size = 4 * arrayType->get_num_of_elements();
         }
         ansCode += ".comm	" + name + "," + to_string(size) + ",4\n";
+        globalName[name] = true;
     }
     if (ansCode.size() > 0)
         ansCode += "\n";
@@ -33,7 +34,7 @@ string CodeGenerate::generate() {
         functionEndNumber++;
         auto asmFunction = new AsmFunction(function, functionEndNumber);
         asmFunction->generate();
-        ansCode += asmFunction->print();
+        ansCode += asmFunction->print() + "\n";
         delete asmFunction;
     }
     return ansCode;
@@ -137,11 +138,10 @@ void AsmBlock::cmpInstGenerate(Instruction* instruction) {
     auto instName = opToName[cmpInstruction->get_cmp_op()];
     auto value1 = instruction->get_operand(0);
     auto value2 = instruction->get_operand(1);
-    auto tempReg = getEmptyRegister(tempInt);
     auto reg = getEmptyRegister(instruction);
 
-    appendInst(movl, getPosition(value1), tempReg);
-    appendInst(cmpl, getPosition(value2), tempReg);
+    appendInst(movl, getPosition(value1), eax);
+    appendInst(cmpl, getPosition(value2), eax);
     appendInst(instName, cl);
     appendInst(movzbl, cl, reg);
 }
@@ -170,8 +170,8 @@ void AsmBlock::fcmpInstGenerate(Instruction* instruction) {
 
 void AsmBlock::zextInstGenerate(Instruction* instruction) {
     auto rightValue = instruction->get_operand(0);
-    valueToRegister[instruction] = valueToRegister[rightValue];
-    valueToAddress[instruction] = valueToAddress[rightValue];
+    auto reg = getEmptyRegister(instruction);
+    appendInst(movl, getPosition(rightValue), reg);
 }
 
 void AsmBlock::fpToSiInstGenerate(Instruction* instruction) {
@@ -220,13 +220,10 @@ void AsmBlock::callInstGenerate(Instruction* instruction) {
     instructionInsertLocation = &normalInstructions;
     stash();
     appendInst(call, Position(callFunctionName));
-    if (returnType == int32Type) {
-        appendInst(movl, eax, getCallAddress(instruction));
+    if (returnType == int32Type)
         appendInst(movl, eax, getEmptyRegister(instruction));
-    } else if (returnType == floatType) {
-        appendInst(movss, xmm0, getCallAddress(instruction));
+    else if (returnType == floatType)
         appendInst(movss, xmm0, getEmptyRegister(instruction));
-    }
     if (operandNumber >= 7)
         appendInst(addq, ConstInteger(8 * (operandNumber - 7)), rsp);
 }
@@ -311,13 +308,11 @@ void AsmBlock::gepInstGenerate(Instruction* instruction) {
     auto pointer = operands[0];
     auto& reg = getEmptyRegister(instruction);
     Value* index;
-    if (operands.size() == 3) {
+    if (operands.size() == 3)
         index = operands[2];
-        appendInst(leaq, getAddress(pointer), reg);
-    } else {
+    else
         index = operands[1];
-        appendInst(movq, getAddress(pointer), reg);
-    }
+    appendInst(movq, getAddress(pointer), reg);
     auto& offsetReg = getEmptyRegister(tempInt);
     appendInst(movl, getPosition(index), offsetReg);
     appendInst(imull, ConstInteger(4), offsetReg);

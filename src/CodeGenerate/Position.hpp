@@ -52,22 +52,12 @@ vector<Register*> argFloatRegister = {&xmm0, &xmm1, &xmm2, &xmm3, &xmm4, &xmm5, 
 map<Register*, Value*> registerToValue;
 map<Value*, Register*> valueToRegister;
 map<Value*, MemoryAddress*> valueToAddress;
+map<string, bool> globalName;
 
 #define Position(x) *new Position(x)
 #define Register(x) *new Register(x)
 #define MemoryAddress(x, y) *new MemoryAddress(x, y)
 #define ConstInteger(x) *new ConstInteger(x)
-
-MemoryAddress& getCallAddress(Value* value) {
-    static int top = 0;
-    if (valueToAddress.count(value) == 0) {
-        top += 4;
-        MemoryAddress& ans = MemoryAddress(-top, rbp);
-        valueToAddress[value] = &ans;
-        return ans;
-    }
-    return *valueToAddress[value];
-}
 
 #define floatType module->get_float_type()
 #define int32Type module->get_int32_type()

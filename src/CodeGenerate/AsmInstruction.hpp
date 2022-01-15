@@ -25,10 +25,11 @@ public:
     string print() {
         int i;
         int size = positions.size();
-        string ans = name + "\t";
-        if (name.length() < 4)
-            ans += "\t";
+        string ans = name;
         if (size > 0) {
+            ans += "\t";
+            if (name.length() < 4)
+                ans += "\t";
             FOR (i, 0, size - 2)
                 ans += to64RegForm(positions[i].name, name) + ", ";
             ans += to64RegForm(positions[size - 1].name, name);
@@ -117,7 +118,7 @@ string genLabelName(string functionName, string basicBlockName) {
 
 map<BasicBlock*, AsmBlock*> basicBlockToAsmBlock;
 
-int stackSpace = 0;
+int stackSpace;
 
 class AsmFunction {
 public:
@@ -144,6 +145,7 @@ public:
         int memoryIndex = 0, intRegisterIndex = 0, floatRegisterIndex = 0;
         Position* position;
         instructionInsertLocation = &argMoveInst;
+        stackSpace = 0;
         for (auto arg : function->get_args()) {
             MemoryAddress& address = getAddress(arg);
             auto argType = arg->get_type();
@@ -183,6 +185,7 @@ public:
             block.endGenerate();
         valueToRegister.clear();
         registerToValue.clear();
+        valueToAddress.clear();
     }
 
     string appendConst(int value) {
@@ -252,6 +255,17 @@ MemoryAddress& getAddress(Value* value) {
         else
             stackSpace += 4;
         valueToAddress[value] = &MemoryAddress(-stackSpace, rbp);
+
+        if (value->get_type()->get_type_id() == Type::PointerTyID) {
+            auto name = value->get_name();
+            if (globalName[name]) {
+                appendInst(leaq, MemoryAddress(name, rip), rax);
+                appendInst(movq, rax, *valueToAddress[value]);
+            } else if (value->get_type()->get_pointer_element_type()->get_type_id() == Type::ArrayTyID) {
+                appendInst(leaq, MemoryAddress(stackSpace - 8, rbp), rax);
+                appendInst(movq, rax, *valueToAddress[value]);
+            }
+        }
     }
     return *valueToAddress[value];
 }

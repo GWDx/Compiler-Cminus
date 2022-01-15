@@ -4,8 +4,8 @@ from os import listdir, popen
 from os.path import join
 
 
-def output(directory, name, ans):
-    print(directory, '\t', '%-24s' % name, '\t', ans)
+def output(directory, name, ans, end='\n'):
+    print(directory, '\t', '%-24s' % name, '\t', ans, end=end)
 
 
 allDirectory = listdir('testcases')
@@ -29,14 +29,15 @@ for directory in allDirectory:
             os.system(f'../../build/cminusfc {codeFileName} -mem2reg -S -o temp 2>/dev/null')
             os.system('clang temp.s -o temp -L. -lcminus_io 2>/dev/null')
             result = subprocess.run(['./temp'], input=inputContent, stdout=subprocess.PIPE, timeout=5)
-            outputFileContent = result.stdout
+            outputContent = result.stdout
             with open(targetOutputFileName, 'rb') as targetOutputFile:
                 targetOutputFileContent = targetOutputFile.read()
-            if (outputFileContent == targetOutputFileContent):
+            if (outputContent == targetOutputFileContent):
                 # output(directory, name, '')
                 passed += 1
             else:
-                output(directory, name, '\033[31;1m wrong\033[0m' + '\t')
+                output(directory, name, '\033[31;1m wrong\033[0m' + '\t', end='')
+                print('\t', outputContent)
         except:
             output(directory, name, '\033[34;1m error\033[0m')
         total += 1
