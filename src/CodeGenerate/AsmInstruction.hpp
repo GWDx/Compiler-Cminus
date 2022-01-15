@@ -262,7 +262,7 @@ MemoryAddress& getAddress(Value* value) {
                 appendInst(leaq, MemoryAddress(name, rip), rax);
                 appendInst(movq, rax, *valueToAddress[value]);
             } else if (value->get_type()->get_pointer_element_type()->get_type_id() == Type::ArrayTyID) {
-                appendInst(leaq, MemoryAddress(stackSpace - 8, rbp), rax);
+                appendInst(leaq, MemoryAddress(8 - stackSpace, rbp), rax);
                 appendInst(movq, rax, *valueToAddress[value]);
             }
         }
