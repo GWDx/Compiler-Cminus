@@ -32,7 +32,7 @@ string CodeGenerate::generate() {
         if (function->get_num_basic_blocks() == 0)
             continue;
         functionEndNumber++;
-        auto asmFunction = new AsmFunction(function, functionEndNumber);
+        asmFunction = new AsmFunction(function, functionEndNumber);
         asmFunction->generate();
         ansCode += asmFunction->print() + "\n";
         delete asmFunction;
@@ -312,9 +312,8 @@ void AsmBlock::gepInstGenerate(Instruction* instruction) {
         index = operands[2];
     else
         index = operands[1];
-    appendInst(movq, getAddress(pointer), reg);
-    auto& offsetReg = getEmptyRegister(tempInt);
-    appendInst(movl, getPosition(index), offsetReg);
-    appendInst(imull, ConstInteger(4), offsetReg);
-    appendInst(addq, offsetReg, reg);
+    appendInst(movq, getPosition(pointer), reg);
+    appendInst(movl, getPosition(index), eax);
+    appendInst(imull, ConstInteger(4), eax);
+    appendInst(addq, rax, reg);
 }

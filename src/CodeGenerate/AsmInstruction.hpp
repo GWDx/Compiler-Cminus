@@ -248,6 +248,8 @@ void AsmBlock::stash() {
     }
 }
 
+AsmFunction* asmFunction;
+
 MemoryAddress& getAddress(Value* value) {
     if (valueToAddress[value] == nullptr) {
         if (value->get_type()->get_type_id() == Type::PointerTyID)
@@ -255,9 +257,10 @@ MemoryAddress& getAddress(Value* value) {
         else
             stackSpace += 4;
         valueToAddress[value] = &MemoryAddress(-stackSpace, rbp);
-
         if (value->get_type()->get_type_id() == Type::PointerTyID) {
             auto name = value->get_name();
+            auto prevInstructionInsertLocation = instructionInsertLocation;
+            instructionInsertLocation = &asmFunction->argMoveInst;
             if (globalName[name]) {
                 appendInst(leaq, MemoryAddress(name, rip), rax);
                 appendInst(movq, rax, *valueToAddress[value]);
@@ -265,6 +268,7 @@ MemoryAddress& getAddress(Value* value) {
                 appendInst(leaq, MemoryAddress(8 - stackSpace, rbp), rax);
                 appendInst(movq, rax, *valueToAddress[value]);
             }
+            instructionInsertLocation = prevInstructionInsertLocation;
         }
     }
     return *valueToAddress[value];
