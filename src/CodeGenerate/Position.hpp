@@ -13,18 +13,26 @@ using std::string;
 using std::to_string;
 using std::vector;
 
+class Position;
+class Register;
+class MemoryAddress;
+class ConstInteger;
+
+vector<Position*> allAllocPosition;
+
 class Position {
 public:
     string name;
 
     Position() {}
-    Position(string name) { this->name = name; }
-    Position(Value* value) {}
+    Position(string name) {
+        this->name = name;
+        // allAllocPosition.push_back(this);
+    }
 };
 
 class Register : public Position {
 public:
-    Register() {}
     Register(string name) { this->name = "%" + name; }
 };
 

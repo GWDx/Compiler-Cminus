@@ -37,6 +37,8 @@ string CodeGenerate::generate() {
         ansCode += asmFunction->print() + "\n";
         delete asmFunction;
     }
+    // for (auto& i : allAllocPosition)
+    //     delete i;
     return ansCode;
 }
 

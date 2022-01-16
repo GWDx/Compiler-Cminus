@@ -1,6 +1,6 @@
 int main(void){
-	int x;
-	x=1+2;
-	output(x);
-	return 1;
+	float x;
+	x = 1 + 2.0;
+	outputFloat(x);
+	return 4;
 }

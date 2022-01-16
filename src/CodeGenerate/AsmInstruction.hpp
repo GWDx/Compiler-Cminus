@@ -67,10 +67,8 @@ public:
     string name;
     vector<AsmInstruction> normalInstructions, endInstructions;
     BasicBlock* basicBlock;
-    AsmFunction* asmFunction;
 
-    AsmBlock(AsmFunction* asmFunction, BasicBlock* basicBlock) {
-        this->asmFunction = asmFunction;
+    AsmBlock(BasicBlock* basicBlock) {
         this->basicBlock = basicBlock;
         name = basicBlock->get_name();
     }
@@ -136,7 +134,7 @@ public:
         functionName = function->get_name();
         int i;
         for (auto basicBlock : function->get_basic_blocks())
-            allBlock.push_back(AsmBlock(this, basicBlock));
+            allBlock.push_back(AsmBlock(basicBlock));
         FOR (i, 0, allBlock.size() - 1)
             basicBlockToAsmBlock[allBlock[i].basicBlock] = &allBlock[i];
     }
@@ -278,8 +276,6 @@ Position& AsmBlock::getPosition(Value* value) {
     Register ans();
     auto constantInt = dynamic_cast<ConstantInt*>(value);
     auto constantFloat = dynamic_cast<ConstantFP*>(value);
-    if (value == tempInt)
-        value = tempInt;
     if (constantInt and value != tempInt)
         return ConstInteger(constantInt->get_value());
     if (constantFloat and value != tempFloat) {
