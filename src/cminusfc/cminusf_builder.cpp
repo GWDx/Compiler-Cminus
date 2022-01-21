@@ -26,6 +26,7 @@ Value* varAddress;
 Value* paramAlloca;
 Function* function;
 Type* returnValueType;
+std::map<Value*, bool> recentAlloca;
 
 Type* cminusTypeToType(std::unique_ptr<Module>& module, CminusType t) {
     switch (t) {
@@ -91,8 +92,11 @@ void CminusfBuilder::visit(ASTVarDeclaration& node) {
     if (scope.in_global()) {
         Constant* init = ConstantZero::get(T, module.get());
         varAlloca = GlobalVariable::create(node.id, module.get(), T, 0, init);
-    } else
+    } else {
         varAlloca = builder->create_alloca(T);
+        if (T == floatType or T == int32Type)
+            recentAlloca[varAlloca] = true;
+    }
     scope.push(node.id, varAlloca);
 }
 
@@ -217,9 +221,20 @@ void CminusfBuilder::visit(ASTIterationStmt& node) {
 }
 
 void CminusfBuilder::visit(ASTVar& node) {  // var -> ID | ID[expression]
-    if (node.expression == nullptr)
+    if (node.expression == nullptr) {
         varAddress = scope.find(node.id);
-    else {
+        if (recentAlloca[varAddress])
+            recentAlloca[varAddress] = false;
+        else {
+            if (varAddress->get_type()->get_type_id() == Type::PointerTyID and
+                varAddress->get_type()->get_pointer_element_type()->get_type_id() == Type::ArrayTyID) {
+                auto varAlloca = scope.find(node.id);
+                auto var0Address = builder->create_gep(varAlloca, {CONST_INT(0), CONST_INT(0)});
+                expressionValue = var0Address;
+            } else
+                expressionValue = builder->create_load(varAddress);
+        }
+    } else {
         auto varAlloca = scope.find(node.id);
         node.expression->accept(*this);
 
@@ -239,18 +254,14 @@ void CminusfBuilder::visit(ASTVar& node) {  // var -> ID | ID[expression]
         assert(varAlloca->get_type()->get_type_id() == Type::PointerTyID);
         // auto elementType = ((PointerType*)varAlloca)->get_element_type();
         auto elementType = varAlloca->get_type()->get_pointer_element_type();
-        if (elementType->get_type_id() == Type::ArrayTyID)
+        if (elementType->get_type_id() == Type::ArrayTyID) {
             varAddress = builder->create_gep(varAlloca, {CONST_INT(0), expressionValue});
-        else {
+            expressionValue = builder->create_load(varAddress);
+        } else {
             Value* var = builder->create_load(varAlloca);
             varAddress = builder->create_gep(var, {expressionValue});
+            expressionValue = builder->create_load(varAddress);
         }
-    }
-    expressionValue = builder->create_load(varAddress);  // 对 var 赋值时会产生冗余
-    if (expressionValue->get_type()->get_type_id() == Type::ArrayTyID) {
-        auto varAlloca = scope.find(node.id);
-        auto var0Address = builder->create_gep(varAlloca, {CONST_INT(0), CONST_INT(0)});
-        expressionValue = var0Address;
     }
 }
 
