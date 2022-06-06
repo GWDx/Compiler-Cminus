@@ -220,8 +220,6 @@ appendInst(addq, rax, reg);
 
 ### 添加、修改的文件
 
-> 见 [merge branch 'dev'](http://211.86.152.198/PB19030801/2021fall-compiler_cminus/-/commit/e3a124e406b8ed7855dd6c6940ad039c63b48ac7)
-
 代码部分
 
 + 在 `src/cminusfc` 目录下，修改了 `CMakeLists.txt` `cminusfc.cpp`

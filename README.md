@@ -1,41 +1,39 @@
-# 实验说明
+## Compiler-Cminus
 
-请 fork 此 repo 到自己的仓库下，随后在自己的仓库中完成实验，请确保自己的 repo 为 Private。
+2021 年秋季编译原理实验  
+实现 cminus-f 编译器
 
-## 目前已布置的实验
+> cminus-f 是 C 语言的子集，语法与语义规则见 [cminusf.md](./Documentations/common/cminusf.md)
 
-* [lab1](./Documentations/1-parser/)
-  + DDL：2021-10-06(~~10-03~~) 23:59:59 (UTC+8)
-* [lab2](./Documentations/2-ir-gen-warmup/)
-  + DDL：2021-10-22 23:59:59 (UTC+8)
-* [lab3](./Documentations/3-ir-gen/)
-  + DDL: 2021-11-21 23:59:59 (UTC+8)
-* [lab4](./Documentations/4-ir-opt)
-  + DDL：
-    + **阶段一**：2021/11/29 23:59:59 (UTC+8)
-    + **阶段二**：~~2021/12/13~~ 2021/12/14 23:59:59 (UTC+8)
-* [lab5](./Documentations/5-bonus/)
-  + DDL:
-    + **报名期限**：2021/12/15 23:59:59 (UTC+8)
-    + **实验提交**：2022/01/15 23:59:59 (UTC+8)
-    + **答辩时间**：考试周结束后，待定
+### 实验内容
 
-## FAQ: How to merge upstream remote branches
+| 编号   | 内容        | 描述                          | 实验任务                                       | 实验报告                                                                                      |
+|:----:|:---------:|:---------------------------:|:------------------------------------------:|:-----------------------------------------------------------------------------------------:|
+| lab1 | 词法分析、语法分析 | 写 cminus-f 的词法、语法规则         | [task1](./Documentations/1-parser/)        | [report1](./Reports/1-parser/README.md)                                                   |
+| lab2 | 了解中间代码    | 学习使用用 `Light IR` 的接口        | [task2](./Documentations/2-ir-gen-warmup/) | [report2](./Reports/2-ir-gen-warmup/report.md)                                            |
+| lab3 | 中间代码生成    | 根据抽象语法树生成中间代码               | [task3](./Documentations/3-ir-gen/)        | [report3](./Reports/3-ir-gen/report.md)                                                   |
+| lab4 | 中间代码优化    | 实现常量传播、循环不变式外提、活跃变量分析等 Pass | [task4](./Documentations/4-ir-opt)         | [report4](./Reports/4-ir-opt/report-phase2.md)                                            |
+| lab5 | 后端代码生成    | 由中间代码生成汇编代码                 | [task5](./Documentations/5-bonus/)         | [report5](./Reports/5-bonus/report.md)<br/>[slides5](./Reports/5-bonus/slides/slides.pdf) |
 
-In brief, you need another alias for upstream repository (we assume you are now in your local copy of forked repository on Gitlab):
+> 实验 3, 4 与彭炫超共同完成
 
-```shell
-$ git remote add upstream http://211.86.152.198:8080/staff/2021fall-compiler_cminus.git
+### 编译及运行
+
+#### 环境配置
+
+```bash
+sudo apt install llvm clang flex bison
 ```
 
-Then try to merge remote commits to your local repository:
+#### 编译
 
-```shell
-$ git pull upstream master
+```bash
+./init.sh
 ```
 
-Then synchronize changes to your forked remote repository:
+#### 测试
 
-```shell
-$ git push origin master
+```bash
+cd Current/test
+./test.sh
 ```
